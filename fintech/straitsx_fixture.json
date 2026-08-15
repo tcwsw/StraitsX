@@ -1,0 +1,13 @@
+{
+  "_owner": "FINTECH",
+  "_note": "Reference fixture: the shape pg/card_adapter.py returns from issue() in CARD_MODE=simulate. card_opaque_id and settlement_tx are placeholders, not real issuer references. human_only.iframe_url is held by the policy engine and is never sent to the execution agent \u2014 it is included here only to document the shape for anyone building the human-facing viewer.",
+  "agent_safe": {
+    "card_opaque_id": "card_sim_0000000000000000",
+    "settlement_tx": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "amount": 8.5,
+    "mode": "simulate"
+  },
+  "human_only": {
+    "iframe_url": "simulated://card/card_sim_0000000000000000"
+  }
+}

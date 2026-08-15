@@ -1,0 +1,28 @@
+{
+  "_owner": "FINTECH",
+  "_note": "Reference fixture: the HTTP 402 response body a merchant's checkout endpoint returns when PAYMENT-SIGNATURE is missing. Shape matches merchants/server.py's checkout() response. Addresses here are the same throwaway testnet placeholders used elsewhere in this repo \u2014 not secrets, not real funds.",
+  "http_status": 402,
+  "headers": {
+    "PAYMENT-REQUIRED": "1"
+  },
+  "body": {
+    "x402Version": 1,
+    "error": "PAYMENT-SIGNATURE header is required",
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "eip155:43113",
+        "amount": "8500000",
+        "asset": "0xd769410dC8772695A7F55a304d2125320A65c2A5",
+        "payTo": "0x1111111111111111111111111111111111111111",
+        "maxTimeoutSeconds": 300,
+        "chainId": 43113,
+        "extra": {
+          "assetTransferMethod": "eip3009",
+          "name": "XSGD",
+          "version": "2"
+        }
+      }
+    ]
+  }
+}

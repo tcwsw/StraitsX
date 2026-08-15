@@ -1,0 +1,51 @@
+{
+  "_owner": "FINTECH",
+  "_note": "Risk limits, network/asset configuration and merchant settlement wallets. This file contains no API keys, private keys, or other secrets \u2014 see fintech/payment_config.example.json for the env-var-based secret layout used at runtime.",
+  "currency": "XSGD",
+  "default_mandate": {
+    "budget_total": 30.0,
+    "per_txn_max": 15.0,
+    "require_human_above": 12.0,
+    "allowed_categories": ["electronics", "accessories"],
+    "denied_keywords": ["gift card", "voucher", "top-up", "prepaid"],
+    "max_delivery_days": 0
+  },
+  "spend_intent_ttl_seconds": 180,
+  "approval_ttl_seconds": 300,
+  "networks": {
+    "fuji": {
+      "network": "eip155:43113",
+      "chain_id": 43113,
+      "xsgd_asset": "0xd769410dC8772695A7F55a304d2125320A65c2A5"
+    },
+    "mainnet": {
+      "network": "eip155:43114",
+      "chain_id": 43114,
+      "xsgd_asset": "0xb2F85b7AB3c2b6f62DF06dE6aE7D09c010a5096E"
+    }
+  },
+  "card_rail": {
+    "min_amount_sgd": 5.0,
+    "max_amount_sgd": 30.0,
+    "cardholder_name_max_length": 26
+  },
+  "merchant_wallets": {
+    "_note": "dev_wallet values are throwaway testnet placeholders already used by merchants/server.py and pg/policy_engine.py for local runs \u2014 they hold no real funds. production_wallet is the actual settlement address and must be supplied by FINTECH before any mainnet run.",
+    "techstore": {
+      "dev_wallet": "0x1111111111111111111111111111111111111111",
+      "production_wallet": "FINTECH_TODO_REQUIRED"
+    },
+    "gadgethub": {
+      "dev_wallet": "0x2222222222222222222222222222222222222222",
+      "production_wallet": "FINTECH_TODO_REQUIRED"
+    },
+    "quickelectronics": {
+      "dev_wallet": "0x3333333333333333333333333333333333333333",
+      "production_wallet": "FINTECH_TODO_REQUIRED"
+    },
+    "bargainbin": {
+      "dev_wallet": "0x4444444444444444444444444444444444444444",
+      "production_wallet": "FINTECH_TODO_REQUIRED"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_owner": "FINTECH",
+  "_note": "Documents which environment variables the payment rails read at runtime. This file MUST NEVER contain an actual secret value \u2014 only variable names and non-secret descriptions/defaults. Copy the variable names into a real .env (see .env.example) and set the values there, outside version control.",
+  "required_env_vars": {
+    "POLICY_SECRET": "HMAC secret for SpendIntent signing. Never committed. Minimum 32 random characters; the policy engine refuses to start without one.",
+    "AGENT_PRIVATE_KEY": "Throwaway signing key the policy engine uses for the execution agent's EIP-3009 authorizations. Never given to the execution agent process.",
+    "RELAYER_PRIVATE_KEY": "Gas-funded relayer key. Only required when SETTLE_MODE=onchain.",
+    "RPC_URL": "Avalanche RPC endpoint (Fuji for testing, mainnet for production).",
+    "CARD_GATEWAY_URL": "StraitsX reference gateway REST base URL, e.g. http://127.0.0.1:4010.",
+    "WALLET_TECHSTORE": "Overrides the dev_wallet in fintech/policy_config.json for the techstore merchant.",
+    "WALLET_GADGETHUB": "Overrides the dev_wallet in fintech/policy_config.json for the gadgethub merchant.",
+    "WALLET_QUICK": "Overrides the dev_wallet in fintech/policy_config.json for the quickelectronics merchant.",
+    "WALLET_BARGAIN": "Overrides the dev_wallet in fintech/policy_config.json for the bargainbin merchant."
+  },
+  "non_secret_defaults": {
+    "settle_mode": "verify",
+    "card_mode": "simulate"
+  }
+}

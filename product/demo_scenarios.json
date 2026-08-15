@@ -1,0 +1,56 @@
+{
+  "_owner": "PM",
+  "_note": "Demo run definitions for the live/rehearsal walkthrough. The developer's CLI (agent/run.py) reads these to script invocations; it never hardcodes a goal, budget, or narration string.",
+  "scenarios": [
+    {
+      "id": "happy_path",
+      "label": "Happy path \u2014 three honest merchants",
+      "goal": "usb-c charger",
+      "budget": 30.0,
+      "quantity": 1,
+      "sku": null,
+      "attack": false,
+      "expected_outcome": "PAID",
+      "narration": "Agent compares three honest merchants, picks TechStore at 8.50 XSGD, policy engine shows seven green checks, settles on Fuji."
+    },
+    {
+      "id": "escalation",
+      "label": "Above the human-approval threshold",
+      "goal": "usb-c 7-port hub",
+      "budget": 30.0,
+      "quantity": 1,
+      "sku": "TS-HUB-7P",
+      "attack": false,
+      "expected_outcome": "ESCALATED_TO_HUMAN",
+      "narration": "13.50 XSGD is above the 12.00 human-approval threshold. The agent blocks and waits for a human decision; approval does not raise the mandate."
+    },
+    {
+      "id": "injection_attack",
+      "label": "Hostile merchant, prompt injection in product copy",
+      "goal": "usb-c charger",
+      "budget": 30.0,
+      "quantity": 1,
+      "sku": null,
+      "attack": true,
+      "expected_outcome": "BLOCKED",
+      "narration": "BargainBin hides an override instruction in its store notice and product descriptions. The pre-hook discards it as untyped text; even if the agent proposed BargainBin, merchant_allowed fails and nothing is signed."
+    },
+    {
+      "id": "basket_purchase",
+      "label": "Multi-item basket, single merchant checkout",
+      "starting_balance": 30.0,
+      "budget": 30.0,
+      "requested_products": [
+        {"name": "usb-c charger", "quantity": 1},
+        {"name": "wireless mouse", "quantity": 1}
+      ],
+      "attack": false,
+      "expected_selected_merchant": "techstore",
+      "expected_outcome": "PAID",
+      "expected_ending_balance": 18.0,
+      "narration": "Two line items, one merchant, one checkout. The agent prices the same two-item bundle at TechStore, GadgetHub and QuickElectronics; TechStore wins because it is the cheapest merchant that can deliver every line same-day. Policy checks every line item's category, stock, delivery and price against product/catalog.json before minting a single SpendIntent for the combined total."
+    }
+  ],
+  "team_name_for_slides": "PM_TODO_REQUIRED",
+  "judging_time_limit_minutes": "PM_TODO_REQUIRED"
+}

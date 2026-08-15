@@ -1,0 +1,22 @@
+{
+  "_owner": "FINTECH",
+  "_note": "Reference fixture: a successful settlement response after a valid PAYMENT-SIGNATURE is presented. Shape matches merchants/server.py's checkout() success response. Not a real transaction \u2014 tx_hash is a placeholder.",
+  "http_status": 200,
+  "headers": {
+    "PAYMENT-RESPONSE": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "body": {
+    "status": "paid",
+    "order_id": "techstore-TS-USBC-65-0xaaaaaaaaaa",
+    "merchant_id": "techstore",
+    "sku": "TS-USBC-65",
+    "quantity": 1,
+    "amount": 8.5,
+    "currency": "XSGD",
+    "receipt": {
+      "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "settled_onchain": false,
+      "network": "eip155:43113"
+    }
+  }
+}

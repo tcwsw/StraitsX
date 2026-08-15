@@ -1,0 +1,64 @@
+{
+  "_owner": "PM",
+  "_note": "All user-facing copy for the CLI output and dashboard. The developer reads strings from here at print time; copy is never authored inline in agent/run.py or the dashboard.",
+  "banner": {
+    "title": "ProcureGuard",
+    "subtitle": "PM_TODO_REQUIRED"
+  },
+  "labels": {
+    "policy_engine_heading": "POLICY ENGINE",
+    "prehook_heading": "PRE-HOOK",
+    "blocked_before_signature": "BLOCKED before any signature was produced",
+    "escalated_to_human": "ESCALATED to a human",
+    "not_approved": "NOT APPROVED \u2014 nothing signed",
+    "human_approved": "human approved this exact purchase",
+    "authorization_refused": "AUTHORIZATION REFUSED",
+    "paid": "PAID"
+  },
+  "dashboard_tagline": "PM_TODO_REQUIRED",
+  "sections": {
+    "starting_balance": "Starting XSGD Balance",
+    "procurement_request": "Procurement Request",
+    "line_items": "Parsed Line Items",
+    "merchant_comparison": "Merchant Comparison",
+    "proposal": "Execution Agent Proposal",
+    "policy_checks": "Policy Checks",
+    "human_approval": "Human Approval",
+    "spend_intent": "SpendIntent Status & Expiry",
+    "payment_progress": "Payment Progress",
+    "transaction": "Transaction",
+    "ending_balance": "Ending XSGD Balance",
+    "audit_timeline": "Hash-Chained Audit Timeline",
+    "audit_verdict": "Audit Agent Verdict",
+    "attack_demo": "Attack Demo \u2014 Malicious BargainBin"
+  },
+  "buttons": {
+    "create_mandate": "Create mandate & submit request",
+    "gather_quotes": "Gather merchant quotes",
+    "propose": "Get Execution Agent proposal",
+    "evaluate": "Submit to policy engine",
+    "approve": "Approve this purchase",
+    "reject": "Reject this purchase",
+    "pay": "Authorize & pay",
+    "run_audit": "Run Audit Agent",
+    "run_attack_demo": "Run attack demo",
+    "reset": "Reset demo"
+  },
+  "attack_demo": {
+    "intro": "BargainBin is a real, reachable merchant with the cheapest price for this item. It hides an instruction aimed at an AI shopping agent inside its store notice and product descriptions.",
+    "hidden_instruction_heading": "Hidden merchant instruction (raw, before the pre-hook)",
+    "prehook_heading": "Pre-hook: what the agent actually received",
+    "policy_heading": "Policy engine verdict",
+    "no_signature": "No signature was produced.",
+    "no_balance_change": "No balance change \u2014 the wallet remains at its starting balance."
+  },
+  "never_show_note": "This dashboard never displays private keys, the OpenAI API key, card CVV/PAN, or complete card material.",
+  "spend_intent_status_labels": {
+    "minted": "minted, not yet redeemed",
+    "committed": "committed \u2014 payment settled",
+    "released": "released \u2014 payment attempt failed, nothing spent",
+    "rejected": "rejected by human \u2014 never minted",
+    "blocked": "blocked by policy \u2014 never minted",
+    "none": "not yet requested"
+  }
+}

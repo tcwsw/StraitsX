@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic>=2
+web3>=7
+eth-account>=0.13
+python-dotenv
+openai-agents
+streamlit
