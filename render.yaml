@@ -1,0 +1,86 @@
+# Render Blueprint — deploys the two FastAPI services + the static frontend as three
+# separate services from this one repo. Deploy via https://dashboard.render.com/blueprints
+# -> "New Blueprint Instance" -> point at this GitHub repo (tcwsw/StraitsX), branch `main`.
+#
+# After the first deploy, go into each service's Environment tab and fill in the vars
+# marked `sync: false` below (Render prompts for these during blueprint creation too).
+# NEVER commit real values for those into this file or anywhere else in the repo.
+#
+# Free-tier web services spin down after ~15 min idle and take 30-60s to wake on the next
+# request — expect a slow first load after any period of inactivity.
+
+services:
+  # -------------------------------------------------------------- policy engine (secrets)
+  - type: web
+    name: procureguard-policy
+    env: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn pg.policy_server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.5
+      # --- secrets: set these manually in the Render dashboard, never in this file ---
+      - key: POLICY_SECRET
+        sync: false
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: WHITELISTED_WALLET_ADDRESS
+        sync: false
+      # --- plain config (mainnet, live self-transfer demo) ---
+      - key: X402_NETWORK
+        value: eip155:43114
+      - key: ALLOWED_NETWORKS
+        value: eip155:43114
+      - key: XSGD_ASSET
+        value: "0xb2F85b7AB3c2b6f62DF06dE6aE7D09c010a5096E"
+      - key: RPC_URL
+        value: https://api.avax.network/ext/bc/C/rpc
+      - key: SETTLE_MODE
+        value: onchain
+      - key: ALLOW_SELF_TRANSFER_DEMO
+        value: "true"
+
+  # ------------------------------------------------------------ merchants (public wallets)
+  - type: web
+    name: procureguard-merchants
+    env: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn merchants.server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.5
+      - key: X402_NETWORK
+        value: eip155:43114
+      - key: XSGD_ASSET
+        value: "0xb2F85b7AB3c2b6f62DF06dE6aE7D09c010a5096E"
+      - key: RPC_URL
+        value: https://api.avax.network/ext/bc/C/rpc
+      - key: SETTLE_MODE
+        value: onchain
+      # RELAYER_PRIVATE_KEY here must be the MERCHANT's own relayer key (same one-wallet
+      # key as the policy service for this demo's self-transfer spec) — never
+      # AGENT_PRIVATE_KEY/POLICY_SECRET, which this process refuses to start with.
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: WALLET_TECHSTORE
+        sync: false
+      - key: WALLET_GADGETHUB
+        sync: false
+      - key: WALLET_BARGAIN
+        sync: false
+      - key: WALLET_CHEAP
+        sync: false
+
+  # ------------------------------------------------------------------- static frontend
+  - type: web
+    name: procureguard-frontend
+    env: static
+    branch: main
+    buildCommand: ""
+    staticPublishPath: frontend

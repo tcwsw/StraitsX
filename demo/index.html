@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProcureGuard — AI Procurement Agent (Demo)</title>
+<style>
+:root {
+  --bg: #f3f4f7; --card-bg: #ffffff; --border: #e5e7eb; --text: #111827; --text-muted: #6b7280;
+  --blue: #2563eb; --blue-bg: #eff6ff; --green: #16a34a; --green-bg: #f0fdf4;
+  --red: #dc2626; --red-bg: #fef2f2; --red-border: #fecaca; --radius: 14px;
+  --shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px; line-height: 1.45; padding: 20px;
+}
+.demo-banner {
+  max-width: 1400px; margin: 0 auto 16px auto; background: #fff7ed; border: 1px solid #fed7aa;
+  color: #9a3412; border-radius: 10px; padding: 10px 16px; font-size: 12.5px; font-weight: 600;
+}
+.topbar {
+  max-width: 1400px; margin: 0 auto 16px auto; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 20px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.shield { width: 36px; height: 36px; border-radius: 9px; background: #eef2ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.brand-title { font-weight: 700; font-size: 16px; }
+.brand-sub { font-size: 11px; color: var(--text-muted); }
+.topbar-mandate { display: flex; align-items: center; gap: 10px; }
+.mandate-label { font-size: 13px; color: var(--text-muted); }
+.mandate-label strong { color: var(--text); }
+.pill { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; letter-spacing: .02em; }
+.pill-active { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.pill-paused { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.topbar-stats { display: flex; gap: 28px; margin-left: auto; }
+.stat { display: flex; flex-direction: column; align-items: flex-start; }
+.stat-label { font-size: 11px; color: var(--text-muted); }
+.stat-value { font-size: 15px; font-weight: 700; transition: color .3s; }
+.stat-remaining { color: var(--green); }
+.pause-btn {
+  display: flex; align-items: center; gap: 6px; background: #fff; color: var(--red);
+  border: 1.5px solid var(--red); border-radius: 10px; padding: 8px 14px; font-weight: 700;
+  font-size: 12px; cursor: pointer; letter-spacing: .02em;
+}
+.pause-btn:hover { background: var(--red-bg); }
+.pause-btn.resumed { color: var(--green); border-color: var(--green); }
+.pause-btn.resumed:hover { background: var(--green-bg); }
+.grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; min-height: 220px; }
+.card-title { font-size: 14px; font-weight: 700; margin: 0 0 12px 0; }
+.card-subtitle { font-weight: 500; color: var(--text-muted); font-size: 12px; }
+.empty-state { color: var(--text-muted); font-size: 12.5px; list-style: none; }
+.request-form { display: flex; gap: 8px; margin-bottom: 10px; }
+.request-input { flex: 1; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13px; font-family: inherit; color: var(--text); }
+.request-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+.request-submit { background: var(--blue); color: #fff; border: none; border-radius: 9px; padding: 9px 16px; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.request-submit:hover { background: #1d4ed8; }
+.request-submit:disabled { background: #93c5fd; cursor: not-allowed; }
+.request-options { display: flex; gap: 16px; margin-bottom: 12px; font-size: 11.5px; color: var(--text-muted); }
+.request-options label { display: flex; align-items: center; gap: 6px; }
+.request-options input { width: 70px; border: 1px solid var(--border); border-radius: 7px; padding: 4px 7px; font-size: 12px; font-family: inherit; color: var(--text); }
+.request-error { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 12px; }
+.chat-bubble { background: var(--blue-bg); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
+.chat-name { font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+.chat-text { font-size: 13px; }
+.chat-time { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
+.agent-name { display: flex; align-items: center; gap: 6px; color: var(--blue); margin-bottom: 8px; }
+.agent-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.agent-log li { font-size: 12.5px; border-radius: 8px; padding: 8px 10px; background: #f9fafb; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px; opacity: 0; animation: fadein .3s forwards; }
+.agent-log li .line-time { font-size: 10.5px; color: #9ca3af; white-space: nowrap; }
+.agent-log li.done { color: var(--text); }
+.agent-log li.final { background: var(--green-bg); color: #15803d; font-weight: 600; }
+.agent-log li.denied { background: var(--red-bg); color: var(--red); font-weight: 600; }
+.offer-list { display: flex; flex-direction: column; gap: 10px; }
+.offer-card { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; opacity: 0; animation: fadein .3s forwards; }
+.offer-card.eligible-best { border-color: #bbf7d0; background: var(--green-bg); }
+.offer-card.ineligible { border-color: var(--red-border); background: var(--red-bg); }
+.offer-avatar { width: 34px; height: 34px; border-radius: 9px; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+.offer-body { flex: 1; min-width: 0; }
+.offer-name { font-weight: 700; font-size: 13px; }
+.offer-desc { font-size: 11.5px; color: var(--text-muted); }
+.offer-price { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+.offer-status { text-align: right; }
+.offer-reason { font-size: 10.5px; color: var(--text-muted); max-width: 130px; }
+.offer-tag { font-size: 10.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+.offer-tag.ok { color: var(--green); }
+.offer-tag.no { color: var(--red); }
+.check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.check-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; opacity: 0; animation: fadein .25s forwards; }
+.check-status { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+.check-status.pass { color: var(--green); }
+.check-status.fail { color: var(--red); }
+.check-detail { color: var(--text-muted); font-weight: 400; }
+.stepper { display: flex; align-items: flex-start; margin: 6px 0 16px 0; }
+.step { display: flex; flex-direction: column; align-items: center; width: 74px; text-align: center; }
+.step-dot { width: 26px; height: 26px; border-radius: 50%; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; transition: background .3s, color .3s; }
+.step.done .step-dot { background: var(--green); color: #fff; }
+.step-label { font-size: 9.5px; color: var(--text-muted); margin-top: 6px; line-height: 1.2; }
+.step.done .step-label { color: var(--text); font-weight: 600; }
+.step-time { font-size: 9px; color: #9ca3af; margin-top: 2px; }
+.step-line { flex: 1; height: 2px; background: #e5e7eb; margin-top: 12px; transition: background .3s; }
+.step-line.done { background: var(--green); }
+.payment-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.meta-cell { display: flex; flex-direction: column; gap: 2px; }
+.meta-label { font-size: 10.5px; color: var(--text-muted); }
+.meta-value { font-size: 13px; font-weight: 700; }
+.snowtrace-link { display: inline-block; margin-top: 12px; font-size: 12px; color: var(--blue); text-decoration: none; font-weight: 600; }
+.snowtrace-link:hover { text-decoration: underline; }
+.audit-list { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.audit-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; opacity: 0; animation: fadein .25s forwards; }
+.audit-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-top: 5px; flex-shrink: 0; }
+.audit-dot.red { background: var(--red); }
+.audit-time { color: var(--text-muted); font-size: 10.5px; white-space: nowrap; }
+.audit-label { color: var(--text); }
+.card-attack { background: #fff; }
+.attack-banner { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; font-weight: 600; }
+.attack-run-btn { background: #9a3412; color: #fff; border: none; border-radius: 9px; padding: 8px 14px; font-weight: 700; font-size: 12px; cursor: pointer; margin-bottom: 12px; }
+.attack-run-btn:hover { background: #7c2d12; }
+.attack-run-btn:disabled { background: #d6a98a; cursor: not-allowed; }
+.denied-banner { margin-top: 14px; background: var(--red-bg); border: 1px solid var(--red-border); border-radius: 10px; padding: 12px 14px; }
+.denied-title { color: var(--red); font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.denied-sub { font-size: 11px; color: #991b1b; margin-top: 4px; }
+.denied-funds { font-size: 11px; color: #991b1b; font-weight: 700; margin-top: 2px; }
+.footer-note { max-width: 1400px; margin: 18px auto 0 auto; text-align: center; color: var(--text-muted); font-size: 11px; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .topbar-stats { gap: 16px; } }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">
+  🎭 SIMULATED DEMO — every number/response on this page is generated in your browser. No real
+  backend, no real payments, no private keys involved.
+</div>
+
+<header class="topbar" id="topbar">
+  <div class="topbar-left">
+    <div class="shield">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" fill="#0f172a"/>
+        <path d="M9.5 12.2l1.8 1.8 3.4-3.6" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <div class="brand-title">ProcureGuard</div>
+      <div class="brand-sub">AI Procurement Agent (Demo)</div>
+    </div>
+  </div>
+
+  <div class="topbar-mandate">
+    <span class="mandate-label">Mandate <strong id="mandateId">M-001</strong></span>
+    <span class="pill pill-active" id="agentStatusPill">ACTIVE</span>
+  </div>
+
+  <div class="topbar-stats">
+    <div class="stat"><span class="stat-label">Budget</span><span class="stat-value" id="statBudget">30.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Per-Merchant Limit</span><span class="stat-value" id="statLimit">20.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Spent</span><span class="stat-value" id="statSpent">0.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Remaining</span><span class="stat-value stat-remaining" id="statRemaining">30.00 XSGD</span></div>
+  </div>
+
+  <button class="pause-btn" id="pauseBtn">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+    <span id="pauseBtnLabel">PAUSE AGENT</span>
+  </button>
+</header>
+
+<main class="grid">
+
+  <section class="card" id="card-request">
+    <h2 class="card-title">1. Your Request &amp; Agent</h2>
+    <form class="request-form" id="requestForm">
+      <input type="text" id="requestInput" class="request-input" autocomplete="off"
+             placeholder="e.g. 2 x usb-c charger" value="1 x usb-c charger" />
+      <button type="submit" class="request-submit" id="requestSubmit">Run ▶</button>
+    </form>
+    <div class="request-options">
+      <label>Budget <input type="number" id="budgetInput" value="30" min="0.01" step="0.01" /> XSGD</label>
+      <label>Per-merchant cap <input type="number" id="capInput" value="20" min="0.01" step="0.01" /> XSGD</label>
+    </div>
+    <div class="request-error" id="requestError" style="display:none"></div>
+    <div class="chat-bubble" id="requestBubble" style="display:none">
+      <div class="chat-name">You</div>
+      <div class="chat-text" id="requestText">—</div>
+      <div class="chat-time" id="requestTime">—</div>
+    </div>
+    <div class="agent-block">
+      <div class="chat-name agent-name">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2"><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M9 8V5a3 3 0 016 0v3" /><circle cx="9" cy="13" r="1" fill="#2563eb" stroke="none"/><circle cx="15" cy="13" r="1" fill="#2563eb" stroke="none"/></svg>
+        ProcureGuard Agent
+      </div>
+      <ul class="agent-log" id="agentLog">
+        <li class="empty-state">Type a request above and press Run.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" id="card-offers">
+    <h2 class="card-title">2. Offers from Authorized Merchants</h2>
+    <div class="offer-list" id="offerList">
+      <div class="empty-state">Waiting for merchant quotes…</div>
+    </div>
+  </section>
+
+  <section class="card" id="card-policy">
+    <h2 class="card-title">3. ProcureGuard Policy Check <span class="card-subtitle">(Post-Hook)</span></h2>
+    <ul class="check-list" id="policyChecks">
+      <li class="empty-state">Awaiting a policy verdict…</li>
+    </ul>
+  </section>
+
+  <section class="card" id="card-payment">
+    <h2 class="card-title">4. Payment <span class="card-subtitle">(x402 / XSGD on Avalanche)</span></h2>
+    <div class="stepper" id="paymentStepper">
+      <div class="step" data-step="challenge"><div class="step-dot">1</div><div class="step-label">402 Received</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="verified"><div class="step-dot">2</div><div class="step-label">Verified</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="submitted"><div class="step-dot">3</div><div class="step-label">Payment Submitted</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="settled"><div class="step-dot">4</div><div class="step-label">Settled on Avalanche</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="consumed"><div class="step-dot">5</div><div class="step-label">SpendIntent Consumed</div><div class="step-time"></div></div>
+    </div>
+    <div class="payment-meta" id="paymentMeta">
+      <div class="meta-cell"><span class="meta-label">SpendIntent</span><span class="meta-value" id="metaIntent">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Merchant</span><span class="meta-value" id="metaMerchant">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Amount</span><span class="meta-value" id="metaAmount">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Expires in</span><span class="meta-value" id="metaExpiry">—</span></div>
+    </div>
+    <a class="snowtrace-link" id="snowtraceLink" href="#" target="_blank" rel="noopener" style="display:none" onclick="return false;">View on Snowtrace (simulated) →</a>
+    <div class="denied-banner" id="paymentDeniedBanner" style="display:none">
+      <div class="denied-title">✕ DENIED</div>
+      <div class="denied-sub" id="paymentDeniedSub">SpendIntent NOT CREATED · Payment signature NOT CREATED</div>
+      <div class="denied-funds">Funds moved: NO</div>
+    </div>
+  </section>
+
+  <section class="card" id="card-audit">
+    <h2 class="card-title">5. Audit Trail</h2>
+    <ul class="audit-list" id="auditList">
+      <li class="empty-state">No events yet.</li>
+    </ul>
+  </section>
+
+  <section class="card card-attack" id="card-attack">
+    <h2 class="card-title">6. Attack Mode <span class="card-subtitle">(Simulated)</span></h2>
+    <button class="attack-run-btn" id="attackRunBtn">Run Attack Demo ▶</button>
+    <div class="attack-banner" id="attackBanner" style="display:none">
+      ⚠ Prompt injection detected in merchant content. Post-hook will enforce policy.
+    </div>
+    <ul class="check-list check-list-attack" id="attackChecks">
+      <li class="empty-state">Attack scenario not yet run.</li>
+    </ul>
+    <div class="denied-banner" id="deniedBanner" style="display:none">
+      <div class="denied-title">✕ DENIED</div>
+      <div class="denied-sub" id="deniedSub">SpendIntent NOT CREATED · Payment signature NOT CREATED</div>
+      <div class="denied-funds" id="deniedFunds">Funds moved: NO</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer-note">
+  This is a static, client-side-only simulation of the ProcureGuard demo UI — for showing what
+  the real flow looks like without needing the live backend running. No network calls are made.
+</footer>
+
+<script>
+"use strict";
+
+// ============================================================== helpers
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const nowTime = () => new Date().toLocaleTimeString([], { hour12: false });
+const fmt = (n) => n.toFixed(2) + " XSGD";
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; }
+  return h;
+}
+function randHex(len) {
+  let s = "";
+  for (let i = 0; i < len; i++) s += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+  return s;
+}
+
+// ============================================================== fake catalog (any typed
+// item gets a deterministic-per-session price per merchant, so this works for ANY request)
+const MERCHANTS = ["techstore", "gadgethub", "bargainbin", "cheapdealsstore"];
+const ALLOWED_MERCHANTS = ["techstore", "gadgethub", "bargainbin"]; // cheapdealsstore excluded on purpose
+const MERCHANT_NAMES = { techstore: "TechStore", gadgethub: "GadgetHub", bargainbin: "BargainBin", cheapdealsstore: "CheapDealsStore" };
+const MERCHANT_COLORS = { techstore: "#2563eb", gadgethub: "#7c3aed", bargainbin: "#dc2626", cheapdealsstore: "#d97706" };
+const MERCHANT_LETTERS = { techstore: "T", gadgethub: "G", bargainbin: "B", cheapdealsstore: "C" };
+const MERCHANT_SEED = { techstore: 1.00, gadgethub: 1.06, bargainbin: 1.14, cheapdealsstore: 0.82 };
+
+function priceFor(item, merchant) {
+  const h = Math.abs(hashCode(item.trim().toLowerCase()));
+  const base = 4 + (h % 1800) / 100; // 4.00 - 22.00
+  return Math.round(base * MERCHANT_SEED[merchant] * 100) / 100;
+}
+
+function parseRequest(text) {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return { itemName: null, quantity: null };
+  const m = trimmed.match(/^\s*(\d+)\s*x\s*(.+?)\s*$/i);
+  if (m) return { itemName: m[2].trim(), quantity: parseInt(m[1], 10) };
+  return { itemName: trimmed, quantity: 1 };
+}
+
+// ============================================================== state
+const state = {
+  mandateId: "m-" + randHex(8),
+  budget: 30.0,
+  cap: 20.0,
+  spent: 0.0,
+  paused: false,
+};
+
+function renderTopbar() {
+  $("mandateId").textContent = state.mandateId;
+  $("statBudget").textContent = fmt(state.budget);
+  $("statLimit").textContent = fmt(state.cap);
+  $("statSpent").textContent = fmt(state.spent);
+  $("statRemaining").textContent = fmt(Math.max(0, state.budget - state.spent));
+}
+renderTopbar();
+
+// ============================================================== pause/resume
+$("pauseBtn").addEventListener("click", () => {
+  state.paused = !state.paused;
+  const pill = $("agentStatusPill");
+  const btn = $("pauseBtn");
+  if (state.paused) {
+    pill.textContent = "PAUSED"; pill.className = "pill pill-paused";
+    btn.classList.add("resumed"); $("pauseBtnLabel").textContent = "RESUME AGENT";
+  } else {
+    pill.textContent = "ACTIVE"; pill.className = "pill pill-active";
+    btn.classList.remove("resumed"); $("pauseBtnLabel").textContent = "PAUSE AGENT";
+  }
+});
+
+// ============================================================== audit trail
+function auditEntry(label, ok = true) {
+  const list = $("auditList");
+  if (list.querySelector(".empty-state")) list.innerHTML = "";
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="audit-dot${ok ? "" : " red"}"></span>` +
+    `<span class="audit-time">${nowTime()}</span><span class="audit-label">${label}</span>`;
+  list.appendChild(li);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ============================================================== agent log
+function agentLine(text, cls = "") {
+  const log = $("agentLog");
+  if (log.querySelector(".empty-state")) log.innerHTML = "";
+  const li = document.createElement("li");
+  if (cls) li.classList.add(cls);
+  li.innerHTML = `<span>${text}</span><span class="line-time">${nowTime()}</span>`;
+  log.appendChild(li);
+}
+
+// ============================================================== main run
+let RUNNING = false;
+
+$("requestForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (RUNNING) return;
+  $("requestError").style.display = "none";
+
+  if (state.paused) {
+    $("requestError").textContent = "Agent is PAUSED — resume it before submitting a new request.";
+    $("requestError").style.display = "block";
+    return;
+  }
+
+  const { itemName, quantity } = parseRequest($("requestInput").value);
+  if (!itemName) {
+    $("requestError").textContent = "Type a request first, e.g. \"2 x usb-c charger\".";
+    $("requestError").style.display = "block";
+    return;
+  }
+  state.budget = parseFloat($("budgetInput").value) || state.budget;
+  state.cap = parseFloat($("capInput").value) || state.cap;
+
+  RUNNING = true;
+  $("requestSubmit").disabled = true;
+  $("requestSubmit").textContent = "Running…";
+
+  await runFlow(itemName, quantity);
+
+  RUNNING = false;
+  $("requestSubmit").disabled = false;
+  $("requestSubmit").textContent = "Run ▶";
+});
+
+async function runFlow(itemName, quantity) {
+  // reset per-run sections (top bar/audit trail persist across runs, like the real demo)
+  $("offerList").innerHTML = "";
+  $("policyChecks").innerHTML = "";
+  $("agentLog").innerHTML = "";
+  $("paymentDeniedBanner").style.display = "none";
+  $("snowtraceLink").style.display = "none";
+  document.querySelectorAll("#paymentStepper .step").forEach((s) => { s.classList.remove("done"); s.querySelector(".step-time").textContent = ""; });
+  document.querySelectorAll("#paymentStepper .step-line").forEach((l) => l.classList.remove("done"));
+  $("metaIntent").textContent = "—"; $("metaMerchant").textContent = "—";
+  $("metaAmount").textContent = "—"; $("metaExpiry").textContent = "—";
+
+  const raw = `${quantity} x ${itemName}`;
+  $("requestBubble").style.display = "block";
+  $("requestText").textContent = raw;
+  $("requestTime").textContent = nowTime();
+
+  agentLine(`Parsed request: qty=${quantity}, item="${itemName}"`);
+  auditEntry(`Request received: "${raw}"`);
+  await sleep(400);
+  agentLine("Searching authorized merchants for quotes…");
+  await sleep(500);
+
+  // ---- offers ----
+  const offers = MERCHANTS.map((m) => ({
+    merchant: m,
+    unitPrice: priceFor(itemName, m),
+    allowed: ALLOWED_MERCHANTS.includes(m),
+  })).map((o) => ({ ...o, total: Math.round(o.unitPrice * quantity * 100) / 100 }));
+
+  const offerList = $("offerList");
+  for (const o of offers) {
+    await sleep(280);
+    const withinCap = o.total <= state.cap;
+    const eligible = o.allowed && withinCap;
+    const div = document.createElement("div");
+    div.className = "offer-card " + (!o.allowed || !withinCap ? "ineligible" : "");
+    div.innerHTML = `
+      <div class="offer-avatar" style="background:${MERCHANT_COLORS[o.merchant]}">${MERCHANT_LETTERS[o.merchant]}</div>
+      <div class="offer-body">
+        <div class="offer-name">${MERCHANT_NAMES[o.merchant]}</div>
+        <div class="offer-desc">${quantity} × ${itemName} @ ${o.unitPrice.toFixed(2)} XSGD</div>
+      </div>
+      <div class="offer-price">${o.total.toFixed(2)} XSGD</div>
+      <div class="offer-status">
+        <div class="offer-tag ${eligible ? "ok" : "no"}">${eligible ? "✓ ELIGIBLE" : "✕ INELIGIBLE"}</div>
+        <div class="offer-reason">${o.allowed ? (withinCap ? "" : "over per-merchant cap") : "not an authorized merchant"}</div>
+      </div>`;
+    offerList.appendChild(div);
+  }
+  agentLine(`Received ${offers.length}/${offers.length} merchant quotes`);
+
+  const eligibleOffers = offers.filter((o) => o.allowed && o.total <= state.cap).sort((a, b) => a.total - b.total);
+  const winner = eligibleOffers[0];
+
+  await sleep(300);
+  if (winner) {
+    offerList.children[offers.findIndex((o) => o === winner)].classList.add("eligible-best");
+    agentLine(`Selected ${MERCHANT_NAMES[winner.merchant]} at ${winner.total.toFixed(2)} XSGD (cheapest eligible)`, "final");
+  } else {
+    agentLine("No eligible merchant found within policy limits", "denied");
+  }
+  auditEntry(`Offers received from ${offers.length} merchants`);
+
+  // ---- policy checks ----
+  const remaining = state.budget - state.spent;
+  const checks = [
+    ["mandate_active", true, "agent mandate is ACTIVE"],
+    ["agent_active", !state.paused, state.paused ? "agent is PAUSED" : "agent status ACTIVE"],
+    ["offer_exists", !!winner, winner ? "offer resolved" : "no matching offer"],
+    ["merchant_allowed", !!winner, winner ? `${winner.merchant} in allowed_merchants` : "no allowed merchant within cap"],
+    ["product_requested", true, "matches requested item"],
+    ["category_allowed", true, "category electronics allowed"],
+    ["quantity_matches", true, `qty ${quantity} matches request`],
+    ["stock_available", true, "sufficient stock"],
+    ["no_denied_items", true, "no denied items present"],
+    ["per_intent_limit", !!winner, winner ? `${winner.total.toFixed(2)} ≤ ${state.cap.toFixed(2)} cap` : "exceeds per-merchant cap"],
+    ["delegated_budget", !!winner && winner.total <= remaining, winner ? `${winner.total.toFixed(2)} ≤ ${remaining.toFixed(2)} remaining` : "insufficient remaining budget"],
+    ["currency", true, "XSGD"],
+  ];
+
+  const policyList = $("policyChecks");
+  let allowed = true;
+  let failReason = "";
+  for (const [name, pass, detail] of checks) {
+    await sleep(160);
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="check-label">${name}</span>` +
+      `<span class="check-status ${pass ? "pass" : "fail"}">${pass ? "✓ PASS" : "✕ FAIL"} <span class="check-detail">${detail}</span></span>`;
+    policyList.appendChild(li);
+    if (!pass) { allowed = false; failReason = `${name}: ${detail}`; }
+  }
+
+  if (allowed) {
+    auditEntry("Policy check ALLOWED (12/12 checks passed)");
+    auditEntry("SpendIntent minted");
+    await runPayment(winner, itemName, quantity);
+  } else {
+    auditEntry(`Policy check DENIED — ${failReason}`, false);
+    $("paymentDeniedBanner").style.display = "block";
+    $("paymentDeniedSub").textContent = `SpendIntent NOT CREATED · Payment signature NOT CREATED (${failReason})`;
+  }
+}
+
+async function runPayment(winner, itemName, quantity) {
+  const intentId = "si_" + randHex(10);
+  const txHash = "0x" + randHex(64);
+  $("metaIntent").textContent = intentId;
+  $("metaMerchant").textContent = MERCHANT_NAMES[winner.merchant];
+  $("metaAmount").textContent = winner.total.toFixed(2) + " XSGD";
+  $("metaExpiry").textContent = "180s";
+
+  const steps = [
+    ["challenge", "402 Received", "Merchant returned HTTP 402 payment challenge"],
+    ["verified", "Verified", "x402 challenge verified against registered recipient"],
+    ["submitted", "Payment Submitted", "EIP-3009 transferWithAuthorization signed & submitted"],
+    ["settled", "Settled on Avalanche", `Settled on-chain, tx ${txHash.slice(0, 10)}…`],
+    ["consumed", "SpendIntent Consumed", "SpendIntent marked CONSUMED"],
+  ];
+
+  for (const [key, label, auditMsg] of steps) {
+    await sleep(550);
+    const stepEl = document.querySelector(`.step[data-step="${key}"]`);
+    stepEl.classList.add("done");
+    stepEl.querySelector(".step-time").textContent = nowTime();
+    const line = stepEl.previousElementSibling;
+    if (line && line.classList.contains("step-line")) line.classList.add("done");
+    auditEntry(auditMsg);
+  }
+
+  // money moves — top bar updates, remaining decreases
+  state.spent = Math.round((state.spent + winner.total) * 100) / 100;
+  renderTopbar();
+  $("statRemaining").style.color = "#0f172a";
+  await sleep(50);
+  $("statRemaining").style.color = "";
+
+  $("snowtraceLink").href = `https://snowtrace.io/tx/${txHash}`;
+  $("snowtraceLink").style.display = "inline-block";
+  agentLine(`Payment settled: ${winner.total.toFixed(2)} XSGD → ${MERCHANT_NAMES[winner.merchant]}`, "final");
+}
+
+// ============================================================== attack mode (independent, scripted)
+$("attackRunBtn").addEventListener("click", async () => {
+  const btn = $("attackRunBtn");
+  btn.disabled = true; btn.textContent = "Running…";
+  $("attackBanner").style.display = "none";
+  $("deniedBanner").style.display = "none";
+  $("attackChecks").innerHTML = "";
+
+  await sleep(300);
+  $("attackBanner").style.display = "block";
+  auditEntry("Attack scenario triggered: merchant content relabels a gift card as the requested item", false);
+
+  const checks = [
+    ["merchant_allowed", true, "bargainbin is an authorized merchant"],
+    ["product_requested", false, "item is a $25 gift card, not the requested product"],
+    ["category_allowed", false, "category gift_card is not in allowed_categories"],
+    ["per_intent_limit", false, "relabeled price exceeds sane bounds for this request"],
+  ];
+  const list = $("attackChecks");
+  for (const [name, pass, detail] of checks) {
+    await sleep(350);
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="check-label">${name}</span>` +
+      `<span class="check-status ${pass ? "pass" : "fail"}">${pass ? "✓ PASS" : "✕ FAIL"} <span class="check-detail">${detail}</span></span>`;
+    list.appendChild(li);
+  }
+
+  await sleep(300);
+  $("deniedBanner").style.display = "block";
+  $("deniedSub").textContent = "SpendIntent NOT CREATED · Payment signature NOT CREATED";
+  $("deniedFunds").textContent = "Funds moved: NO";
+  auditEntry("Attack scenario DENIED — no SpendIntent created, no payment signed", false);
+
+  btn.disabled = false; btn.textContent = "Run Attack Demo ▶";
+});
+</script>
+</body>
+</html>

@@ -25,8 +25,15 @@
  */
 
 const qs = new URLSearchParams(location.search);
-const POLICY_URL = (qs.get("policy") || "http://127.0.0.1:4020").replace(/\/$/, "");
-const MERCHANTS_URL = (qs.get("merchants") || "http://127.0.0.1:4030").replace(/\/$/, "");
+// Local dev (served via `python -m http.server` from 127.0.0.1/localhost) still defaults
+// to the local API ports. Any other origin (e.g. the deployed Render static site) defaults
+// to the deployed backend URLs instead, so the public link works with no query params.
+// Either can still be overridden via ?policy=...&merchants=... for one-off testing.
+const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(location.hostname);
+const DEFAULT_POLICY_URL = IS_LOCAL_HOST ? "http://127.0.0.1:4020" : "https://procureguard-policy.onrender.com";
+const DEFAULT_MERCHANTS_URL = IS_LOCAL_HOST ? "http://127.0.0.1:4030" : "https://procureguard-merchants.onrender.com";
+const POLICY_URL = (qs.get("policy") || DEFAULT_POLICY_URL).replace(/\/$/, "");
+const MERCHANTS_URL = (qs.get("merchants") || DEFAULT_MERCHANTS_URL).replace(/\/$/, "");
 
 let MAINNET_NETWORK = null; // populated from GET /system/info during boot()
 let RUN_IN_PROGRESS = false;
