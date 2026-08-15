@@ -13,10 +13,15 @@ import os
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import json
+import tempfile
+
 from audit.audit_agent import AuditEnvelope, AuditVerdict, _merge_verdicts, evaluate_scripted, hash_mandate
+from pg.ledger import Ledger
 from pg.models import Mandate, PolicyVerdict
 
 C = {"ok": "\033[92m", "bad": "\033[91m", "dim": "\033[2m", "b": "\033[1m", "off": "\033[0m"}
@@ -115,16 +120,48 @@ FLAG_CASES = [
 
 def hash_mandate_cases() -> list[tuple]:
     m1 = Mandate(
-        mandate_id="m-1", principal="Team ProcureGuard", budget_total=30.0, per_txn_max=15.0,
+        mandate_id="m-1", principal="Team ProcureGuard", budget_total=30.0, per_intent_max=15.0,
         allowed_categories=["electronics"], allowed_merchants=["techstore"],
         require_human_above=12.0,
         expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
     )
-    m2 = m1.model_copy(update={"budget_total": 999.0})
+    m2 = m1.model_copy(update={"budget_total": Decimal("999.00")})
     return [
         ("H1", "hashing the same mandate twice is stable", hash_mandate(m1) == hash_mandate(m1), True),
         ("H2", "hashing a different mandate produces a different hash", hash_mandate(m1) != hash_mandate(m2), True),
     ]
+
+
+def ledger_verify_cases() -> list[tuple]:
+    """pg.ledger.Ledger.verify() is the actual hash-chain tamper-detector `GET /audit`
+    calls — build one in a throwaway temp file (never the real audit/ledger.jsonl) so this
+    never grows the repo's real ledger."""
+    out = []
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "ledger.jsonl")
+        ledger = Ledger(path=path)
+        ledger.append("mandate_registered", "human", {"mandate_id": "m-1"})
+        ledger.append("procurement_request", "execution_agent", {"procurement_id": "p-1"})
+        ledger.append("policy_verdict", "policy_engine", {"allowed": True})
+
+        ok, msg = ledger.verify()
+        out.append(("H3", "a freshly built, untampered hash chain verifies intact",
+                   (ok, msg), (True, "chain intact")))
+
+        # Tamper with the middle entry's data in place, leaving its recorded "hash" field
+        # untouched — exactly what an attacker editing the file directly would produce.
+        with open(path) as fh:
+            lines = [json.loads(line) for line in fh if line.strip()]
+        lines[1]["data"]["procurement_id"] = "p-TAMPERED"
+        with open(path, "w") as fh:
+            for entry in lines:
+                fh.write(json.dumps(entry, default=str) + "\n")
+
+        tampered_ok, tampered_msg = ledger.verify()
+        out.append(("H4", "editing a past entry's data breaks the chain, is detected as tampered",
+                   (tampered_ok, "tampered entry" in tampered_msg), (False, True)))
+
+    return out
 
 
 # ---------------------------------------------------------------- merge-logic cases
@@ -179,6 +216,13 @@ def run() -> int:
         mark = f"{C['ok']}PASS{C['off']}" if ok else f"{C['bad']}FAIL{C['off']}"
         print(f"{cid:<5}{str(expect):<10}{str(got):<10}{desc}  [{mark}]")
 
+    print(f"\n{C['b']}AUDIT MATRIX — ledger hash-chain verify() / tamper detection{C['off']}")
+    for cid, desc, got, expect in ledger_verify_cases():
+        ok = got == expect
+        failures += not ok
+        mark = f"{C['ok']}PASS{C['off']}" if ok else f"{C['bad']}FAIL{C['off']}"
+        print(f"{cid:<5}{str(expect):<24}{str(got):<24}{desc}  [{mark}]")
+
     print(f"\n{C['b']}AUDIT MATRIX — merge logic (model cannot suppress a deterministic finding){C['off']}")
     for cid, desc, got, expect in merge_cases():
         ok = got == expect
@@ -186,7 +230,7 @@ def run() -> int:
         mark = f"{C['ok']}PASS{C['off']}" if ok else f"{C['bad']}FAIL{C['off']}"
         print(f"{cid:<5}{str(expect):<10}{str(got):<10}{desc}  [{mark}]")
 
-    total = len(FLAG_CASES) + 2 + 3
+    total = len(FLAG_CASES) + 2 + 2 + 3
     colour = C["ok"] if failures == 0 else C["bad"]
     print(f"\n{colour}{total - failures}/{total} cases as specified{C['off']}\n")
     return 1 if failures else 0

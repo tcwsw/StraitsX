@@ -156,8 +156,10 @@ class AuditVerdict(BaseModel):
 
 def hash_mandate(mandate: Mandate) -> str:
     """Reduce a Mandate to the one thing the Audit Agent is allowed to see of it: a hash
-    binding the audit to a specific mandate without exposing its limits/allowlists."""
-    raw = json.dumps(mandate.model_dump(), sort_keys=True, separators=(",", ":"))
+    binding the audit to a specific mandate without exposing its limits/allowlists.
+    `default=str` handles the Decimal-valued XSGD fields (budget_total, per_intent_max,
+    require_human_above), which json.dumps cannot serialize natively."""
+    raw = json.dumps(mandate.model_dump(), sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -298,11 +300,38 @@ def _propose_audit(envelope: AuditEnvelope) -> AuditVerdict:
 
 
 def run_audit(envelope: AuditEnvelope) -> AuditVerdict:
-    """Entry point. AUDIT_MODE=scripted (default) is fully deterministic. AUDIT_MODE=openai
-    asks the model too, then merges its opinion with the deterministic result so the model
-    can never suppress a flag the deterministic checker independently found."""
+    """Entry point. AUDIT_MODE=scripted (default) is fully deterministic and authoritative.
+    AUDIT_MODE=openai additionally asks the model, then merges its opinion with the
+    deterministic result so the model can never suppress a flag or downgrade a status the
+    deterministic checker independently found. An OpenAI failure (missing key, network
+    error, malformed output, ...) of any kind must never prevent a deterministic audit
+    result from being returned — it silently falls back to `deterministic` alone."""
     deterministic = evaluate_scripted(envelope)
     if AUDIT_MODE != "openai":
         return deterministic
-    model_verdict = _propose_audit(envelope)
+    try:
+        model_verdict = _propose_audit(envelope)
+    except Exception:
+        return deterministic
     return _merge_verdicts(deterministic, model_verdict)
+
+
+def run_audit_with_commentary(envelope: AuditEnvelope) -> dict:
+    """Same inputs as `run_audit()`, but returns the deterministic and AI results SEPARATELY
+    and unmerged, for callers (the dashboard) that want to label and display them under
+    their own, distinct authority:
+      - "Deterministic Audit — authoritative": `deterministic`, ALWAYS present.
+      - "Optional AI Audit Commentary — advisory": `ai`, present only when AUDIT_MODE=openai
+        and the model call succeeded; otherwise None (with `ai_error` set to a short reason)
+        — the deterministic result is still returned either way.
+    This function never merges or lets the AI result influence the deterministic one; it is
+    purely a display-time split of the same two computations `run_audit()` already performs.
+    """
+    deterministic = evaluate_scripted(envelope)
+    if AUDIT_MODE != "openai":
+        return {"deterministic": deterministic, "ai": None, "ai_error": None}
+    try:
+        ai_verdict = _propose_audit(envelope)
+    except Exception as exc:
+        return {"deterministic": deterministic, "ai": None, "ai_error": str(exc)}
+    return {"deterministic": deterministic, "ai": ai_verdict, "ai_error": None}

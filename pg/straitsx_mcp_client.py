@@ -28,6 +28,9 @@ import httpx
 # The three arguments StraitsX's get_card_sandbox / get_card_prod tools require.
 REQUIRED_TOOL_FIELDS = {"wallet_address", "cardholder_name", "amount_sgd"}
 
+# The single argument StraitsX's view_card_sandbox / view_card_prod tools require.
+VIEW_TOOL_REQUIRED_FIELDS = {"card_opaque_id"}
+
 DEFAULT_SSE_TIMEOUT = 20.0    # seconds to wait for the `endpoint` SSE event
 DEFAULT_RPC_TIMEOUT = 20.0    # seconds to wait for initialize / tools/list responses
 DEFAULT_CALL_TIMEOUT = 60.0   # seconds to wait for the tools/call response (card issuance)
@@ -70,25 +73,26 @@ def _run_sse_reader(
         endpoint_q.put(exc)
 
 
-def issue_card(
+def call_tool(
     *,
     mcp_url: str,
     tool_name: str,
-    wallet_address: str,
-    cardholder_name: str,
-    amount_sgd: float,
+    arguments: dict[str, Any],
+    required_fields: set[str] | None = None,
     sse_timeout: float = DEFAULT_SSE_TIMEOUT,
     rpc_timeout: float = DEFAULT_RPC_TIMEOUT,
     call_timeout: float = DEFAULT_CALL_TIMEOUT,
 ) -> dict[str, Any]:
-    """Run the full MCP-over-SSE sequence once and return the raw `tools/call` result.
+    """Run the full MCP-over-SSE sequence once against ANY single tool (card issuance,
+    card view, ...) and return the raw `tools/call` result.
 
     Raises McpCallFailed (fail closed) on any handshake, schema, or call failure. Always
     closes the SSE connection before returning.
     """
     if not mcp_url or not tool_name:
-        raise McpCallFailed("STRAITSX_MCP_URL / STRAITSX_CARD_TOOL are not configured")
+        raise McpCallFailed("MCP URL / tool name are not configured")
 
+    required = required_fields or set()
     endpoint_q: "queue.Queue[Any]" = queue.Queue()
     response_q: "queue.Queue[dict]" = queue.Queue()
     stop = threading.Event()
@@ -150,7 +154,7 @@ def issue_card(
             raise McpCallFailed(f"MCP tool {tool_name!r} not found in tools/list")
 
         schema_props = set(target.get("inputSchema", {}).get("properties", {}))
-        missing = REQUIRED_TOOL_FIELDS - schema_props
+        missing = required - schema_props
         if missing:
             raise McpCallFailed(
                 f"MCP tool {tool_name!r} input schema is missing required field(s): {sorted(missing)}"
@@ -158,11 +162,7 @@ def issue_card(
 
         call_resp = call("tools/call", {
             "name": tool_name,
-            "arguments": {
-                "wallet_address": wallet_address,
-                "cardholder_name": cardholder_name,
-                "amount_sgd": amount_sgd,
-            },
+            "arguments": arguments,
         }, rid=3, wait=call_timeout)
         if not call_resp or "result" not in call_resp:
             raise McpCallFailed(f"MCP tools/call did not return a result for {tool_name!r}")
@@ -179,3 +179,52 @@ def issue_card(
             except Exception:                                       # noqa: BLE001
                 pass
         thread.join(timeout=5)
+
+
+def issue_card(
+    *,
+    mcp_url: str,
+    tool_name: str,
+    wallet_address: str,
+    cardholder_name: str,
+    amount_sgd: float,
+    sse_timeout: float = DEFAULT_SSE_TIMEOUT,
+    rpc_timeout: float = DEFAULT_RPC_TIMEOUT,
+    call_timeout: float = DEFAULT_CALL_TIMEOUT,
+) -> dict[str, Any]:
+    """Issue a card via `get_card_sandbox` / `get_card_prod`. Thin wrapper over
+    `call_tool()` that pins the exact argument shape and required-field schema StraitsX's
+    issuance tools expect."""
+    return call_tool(
+        mcp_url=mcp_url, tool_name=tool_name,
+        arguments={
+            "wallet_address": wallet_address,
+            "cardholder_name": cardholder_name,
+            # StraitsX's wire-level JSON-RPC tool call requires a native JSON number;
+            # amount_sgd may arrive as a Decimal from the policy layer, so it is cast to
+            # float only here, at the external MCP boundary.
+            "amount_sgd": float(amount_sgd),
+        },
+        required_fields=REQUIRED_TOOL_FIELDS,
+        sse_timeout=sse_timeout, rpc_timeout=rpc_timeout, call_timeout=call_timeout,
+    )
+
+
+def view_card(
+    *,
+    mcp_url: str,
+    tool_name: str,
+    card_opaque_id: str,
+    sse_timeout: float = DEFAULT_SSE_TIMEOUT,
+    rpc_timeout: float = DEFAULT_RPC_TIMEOUT,
+    call_timeout: float = DEFAULT_CALL_TIMEOUT,
+) -> dict[str, Any]:
+    """Fetch a live view of a previously issued card via `view_card_sandbox` /
+    `view_card_prod`. Thin wrapper over `call_tool()` — always a fresh call, never cached,
+    so the human always sees the card's current state."""
+    return call_tool(
+        mcp_url=mcp_url, tool_name=tool_name,
+        arguments={"card_opaque_id": card_opaque_id},
+        required_fields=VIEW_TOOL_REQUIRED_FIELDS,
+        sse_timeout=sse_timeout, rpc_timeout=rpc_timeout, call_timeout=call_timeout,
+    )

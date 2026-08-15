@@ -1,6 +1,10 @@
 .env
+.env.policy
+.env.app
+*.env.local
 __pycache__/
 *.pyc
 .venv/
 venv/
 audit/ledger.jsonl
+data/merchant_registry.local.json

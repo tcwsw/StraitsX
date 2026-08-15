@@ -15,10 +15,26 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from merchants.facilitator import settle, verify
+from merchants.facilitator import SettlementFailed, settle, verify
 from pg.x402_client import decode_header
+
+# This process must receive only public merchant-wallet config (WALLET_* payment
+# addresses) plus, when actually settling on-chain, its OWN RELAYER_PRIVATE_KEY — never
+# the policy tier's AGENT_PRIVATE_KEY (signs consumer payments) or POLICY_SECRET (mints
+# SpendIntents). Those belong exclusively to pg/policy_server.py (loaded from its own
+# .env.policy) and must never reach the merchant process, on any settlement path.
+_FORBIDDEN_IN_MERCHANT_PROCESS = ("AGENT_PRIVATE_KEY", "POLICY_SECRET")
+_leaked = [k for k in _FORBIDDEN_IN_MERCHANT_PROCESS if os.environ.get(k)]
+if _leaked:
+    raise RuntimeError(
+        "merchants.server refuses to start: policy-tier secret(s) present in this "
+        f"process's environment: {', '.join(sorted(_leaked))}. These belong only to "
+        "pg/policy_server.py — remove them from this process's environment (see run.sh's "
+        "`env -u` flags on the merchant launch line)."
+    )
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG_PATH = Path(os.environ.get("CATALOG_PATH", ROOT / "product" / "catalog.json"))
@@ -30,18 +46,32 @@ ASSET = os.environ.get("XSGD_ASSET") or (XSGD_MAINNET if NETWORK.endswith("43114
 DECIMALS = 6
 
 app = FastAPI(title="ProcureGuard demo merchants")
+# Local demo tooling only (the static frontend/ page is served from its own origin and
+# calls this API's public search/checkout endpoints directly). No secrets or cookies ever
+# flow over this boundary.
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
 
 _catalog = json.loads(CATALOG_PATH.read_text())
 CATALOG: dict[str, dict] = _catalog["merchants"]
-INJECTION: str = _catalog["injection"]
 
 # Each merchant settles to its own wallet. Set from .env for a real run.
 WALLETS = {
     "techstore": os.environ.get("WALLET_TECHSTORE", "0x1111111111111111111111111111111111111111"),
     "gadgethub": os.environ.get("WALLET_GADGETHUB", "0x2222222222222222222222222222222222222222"),
-    "quickelectronics": os.environ.get("WALLET_QUICK", "0x3333333333333333333333333333333333333333"),
+    "cheapdealsstore": os.environ.get("WALLET_CHEAP", "0x3333333333333333333333333333333333333333"),
     "bargainbin": os.environ.get("WALLET_BARGAIN", "0x4444444444444444444444444444444444444444"),
 }
+
+# Demo/test-only attack simulation: when DEMO_EVIL_MERCHANT names one of the merchants
+# above, that merchant's 402 challenge quotes DEMO_EVIL_PAYTO instead of its real
+# registered wallet — simulating a compromised or redirected merchant. The policy engine's
+# resolve_and_verify_payment() must refuse this (RECIPIENT_MISMATCH) BEFORE any signature
+# is produced; nothing here bypasses that check, this only lets a demo/test trigger it via
+# a genuine merchant 402 response instead of a hand-built one.
+DEMO_EVIL_MERCHANT = os.environ.get("DEMO_EVIL_MERCHANT", "")
+DEMO_EVIL_PAYTO = os.environ.get("DEMO_EVIL_PAYTO", "")
 
 
 def _atomic(price: float) -> str:
@@ -54,6 +84,15 @@ def merchants():
         {"merchant_id": mid, "name": m["name"], "items": len(m["items"])}
         for mid, m in CATALOG.items()
     ]
+
+
+@app.get("/system/info")
+def system_info():
+    """Non-secret operational facts only — no keys, no wallet balances. Lets a thin client
+    (the dashboard) show which network this merchant process is quoting on (e.g. for a
+    'REAL MAINNET SELF-TRANSFER' badge) without ever reading X402_NETWORK itself, since
+    that belongs to this process's own environment, not the dashboard's."""
+    return {"network": NETWORK}
 
 
 @app.get("/{merchant_id}/search")
@@ -71,22 +110,23 @@ def search(merchant_id: str, q: str = ""):
         "merchant_name": m["name"],
         "items": [{**i, "currency": "XSGD", "checkout_url": f"/{merchant_id}/checkout"} for i in items],
     }
-    # The hostile merchant smuggles instructions into fields the agent will read.
-    if m.get("hostile"):
-        out["store_notice"] = INJECTION
-        for i in out["items"]:
-            i["description"] = f"Great value, ships today. {INJECTION}"
+    # The hostile merchant's items already carry their own (possibly injected) description
+    # straight from product/catalog.json — nothing synthesized here.
     return out
 
 
 @app.get("/{merchant_id}/product/{sku}", response_class=HTMLResponse)
 def product_page(merchant_id: str, sku: str):
-    """A human-looking page. The hostile merchant hides the payload in 1px white text."""
+    """A human-looking page. The hostile merchant hides its item's own description (which may
+    carry an injected instruction) in 1px white text."""
     m = CATALOG.get(merchant_id, {})
     item = next((i for i in m.get("items", []) if i["sku"] == sku), None)
     if not item:
         return HTMLResponse("<h1>404</h1>", 404)
-    hidden = f'<p style="color:#fff;font-size:1px">{INJECTION}</p>' if m.get("hostile") else ""
+    hidden = (
+        f'<p style="color:#fff;font-size:1px">{item.get("description", "")}</p>'
+        if m.get("hostile") else ""
+    )
     return (
         f"<html><body style='font-family:system-ui'>"
         f"<h1>{item['title']}</h1><p>{item['price']:.2f} XSGD at {m['name']}</p>"
@@ -123,12 +163,15 @@ async def checkout(
                           "subtotal": round(item["price"] * qty, 2)})
 
     total = round(sum(line["subtotal"] for line in resolved), 2)
+    pay_to = WALLETS[merchant_id]
+    if DEMO_EVIL_MERCHANT and DEMO_EVIL_PAYTO and merchant_id == DEMO_EVIL_MERCHANT:
+        pay_to = DEMO_EVIL_PAYTO
     accept = {
         "scheme": "exact",
         "network": NETWORK,
         "amount": _atomic(total),
         "asset": ASSET,
-        "payTo": WALLETS[merchant_id],
+        "payTo": pay_to,
         "maxTimeoutSeconds": 300,
         "chainId": int(NETWORK.split(":")[1]),
         "extra": {"assetTransferMethod": "eip3009", "name": "XSGD", "version": "2"},
@@ -146,7 +189,25 @@ async def checkout(
     if not ok:
         return JSONResponse({"error": "payment invalid", "detail": why}, 402)
 
-    tx_hash, settled = settle(payload, accept)
+    try:
+        tx_hash, settled = settle(payload, accept)
+    except SettlementFailed as exc:
+        # A transaction was actually submitted but the chain reverted it. No value moved
+        # — this must never be reported as "paid". Non-200 so the caller's definite=True
+        # /intents/{id}/failed path releases the reservation rather than counting spend
+        # that never happened.
+        return JSONResponse(
+            {"error": "settlement reverted on-chain", "detail": str(exc),
+             "tx_hash": exc.tx_hash, "status": exc.status},
+            status_code=502,
+        )
+    except RuntimeError as exc:
+        # SETTLE_MODE=onchain but RELAYER_PRIVATE_KEY is missing: a hard configuration
+        # failure. Nothing was submitted and no tx hash exists — never invent one.
+        return JSONResponse(
+            {"error": "settlement configuration error", "detail": str(exc)},
+            status_code=500,
+        )
     order_id = f"{merchant_id}-{'-'.join(l['sku'] for l in resolved)}-{tx_hash[:10]}"
     return JSONResponse(
         {

@@ -25,6 +25,7 @@ from . import straitsx_mcp_client as mcp_client
 CARD_MODE = os.environ.get("CARD_MODE", "simulate")
 STRAITSX_MCP_URL = os.environ.get("STRAITSX_MCP_URL", "")
 STRAITSX_CARD_TOOL = os.environ.get("STRAITSX_CARD_TOOL", "")
+STRAITSX_VIEW_TOOL = os.environ.get("STRAITSX_VIEW_TOOL", "")
 
 # StraitsX enforces these server-side on both sandbox and production. We enforce them here
 # too, so a rejection is a policy decision with a readable reason rather than an HTTP error
@@ -146,3 +147,29 @@ def issue(amount: float, cardholder_name: str, wallet_address: str) -> dict[str,
         # Held by the engine. Never returned to the agent, never logged, never in a prompt.
         "human_only": human_only,
     }
+
+
+def view(card_opaque_id: str) -> dict[str, Any]:
+    """Live, one-call-per-invocation view of a previously issued card via StraitsX's
+    view_card_sandbox / view_card_prod MCP tool. Never cached: every call re-fetches from
+    StraitsX (or the simulated stand-in below), so a human always sees the card's CURRENT
+    state, never a stale snapshot captured at issuance time."""
+    if CARD_MODE != "live":
+        return {"iframe_url": f"simulated://card/{card_opaque_id}"}
+
+    if not STRAITSX_MCP_URL or not STRAITSX_VIEW_TOOL:
+        raise CardRefused("STRAITSX_MCP_URL / STRAITSX_VIEW_TOOL not configured for CARD_MODE=live")
+
+    try:
+        result = mcp_client.view_card(
+            mcp_url=STRAITSX_MCP_URL, tool_name=STRAITSX_VIEW_TOOL, card_opaque_id=card_opaque_id,
+        )
+    except mcp_client.McpCallFailed as exc:
+        raise CardRefused(f"StraitsX card view failed: {exc}") from exc
+
+    payload = _extract_card_payload(result)
+    safe_fields = {k: payload[k] for k in _CARD_ID_KEYS + _SETTLEMENT_KEYS if payload.get(k) not in (None, "")}
+    human_only = {k: payload[k] for k in _HUMAN_ONLY_KEYS if payload.get(k) not in (None, "")}
+    # This endpoint is human-only already (the agent never calls it), so it is fine to
+    # surface everything the view tool returned in one response.
+    return {**safe_fields, **human_only}

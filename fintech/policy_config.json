@@ -4,10 +4,15 @@
   "currency": "XSGD",
   "default_mandate": {
     "budget_total": 30.0,
-    "per_txn_max": 15.0,
-    "require_human_above": 12.0,
-    "allowed_categories": ["electronics", "accessories"],
+    "per_intent_max": 20.0,
+    "require_human_above": null,
+    "allowed_categories": ["electronics"],
+    "blocked_categories": ["gift_card", "cash_equivalent"],
+    "_blocked_categories_note": "Enforced directly by the policy engine (category_not_blocked check in pg/policy_engine.py) — belt-and-suspenders on top of allowed_categories being an allow-list, so a category present on both lists is still refused.",
+    "allowed_merchants": ["techstore", "gadgethub", "bargainbin"],
+    "_allowed_merchants_note": "cheapdealsstore is deliberately NOT in this list: it remains searchable/listed in the merchant registry (data/merchant_registry.json), but any purchase routed to it is refused by the merchant_allowed check.",
     "denied_keywords": ["gift card", "voucher", "top-up", "prepaid"],
+    "mandate_expiry_days": 7,
     "max_delivery_days": 0
   },
   "spend_intent_ttl_seconds": 180,
@@ -39,7 +44,7 @@
       "dev_wallet": "0x2222222222222222222222222222222222222222",
       "production_wallet": "FINTECH_TODO_REQUIRED"
     },
-    "quickelectronics": {
+    "cheapdealsstore": {
       "dev_wallet": "0x3333333333333333333333333333333333333333",
       "production_wallet": "FINTECH_TODO_REQUIRED"
     },

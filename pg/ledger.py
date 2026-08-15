@@ -43,9 +43,9 @@ class Ledger:
                 "data": data,
                 "prev": prev,
             }
-            body["hash"] = _hash(json.dumps(body, sort_keys=True, separators=(",", ":")))
+            body["hash"] = _hash(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str))
             with open(self.path, "a") as fh:
-                fh.write(json.dumps(body) + "\n")
+                fh.write(json.dumps(body, default=str) + "\n")
             return body
 
     def read(self) -> Iterator[dict]:
@@ -61,7 +61,7 @@ class Ledger:
             body = {k: v for k, v in entry.items() if k != "hash"}
             if body["prev"] != prev:
                 return False, f"broken link at seq {body['seq']}"
-            recomputed = _hash(json.dumps(body, sort_keys=True, separators=(",", ":")))
+            recomputed = _hash(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str))
             if recomputed != entry["hash"]:
                 return False, f"tampered entry at seq {body['seq']}"
             prev = entry["hash"]

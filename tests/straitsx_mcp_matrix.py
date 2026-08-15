@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 import uuid
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -399,7 +400,7 @@ def case_successful_call_commits_once() -> tuple[bool, str]:
 
     ok = (
         first["ok"] and first.get("card_opaque_id") == "card_mock_commit"
-        and abs(after_first - round(before + 8.50, 2)) < 1e-9
+        and after_first == before + Decimal("8.50")
         and not second["ok"] and after_second == after_first
     )
     return ok, (f"first_ok={first['ok']} spent {before}->{after_first}->{after_second} "

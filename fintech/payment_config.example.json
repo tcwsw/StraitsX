@@ -9,7 +9,7 @@
     "CARD_GATEWAY_URL": "StraitsX reference gateway REST base URL, e.g. http://127.0.0.1:4010.",
     "WALLET_TECHSTORE": "Overrides the dev_wallet in fintech/policy_config.json for the techstore merchant.",
     "WALLET_GADGETHUB": "Overrides the dev_wallet in fintech/policy_config.json for the gadgethub merchant.",
-    "WALLET_QUICK": "Overrides the dev_wallet in fintech/policy_config.json for the quickelectronics merchant.",
+    "WALLET_CHEAP": "Overrides the dev_wallet in fintech/policy_config.json for the cheapdealsstore merchant.",
     "WALLET_BARGAIN": "Overrides the dev_wallet in fintech/policy_config.json for the bargainbin merchant."
   },
   "non_secret_defaults": {

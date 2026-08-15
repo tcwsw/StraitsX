@@ -29,8 +29,77 @@
     "transaction": "Transaction",
     "ending_balance": "Ending XSGD Balance",
     "audit_timeline": "Hash-Chained Audit Timeline",
-    "audit_verdict": "Audit Agent Verdict",
-    "attack_demo": "Attack Demo \u2014 Malicious BargainBin"
+    "audit_verdict": "Audit Monitor Verdict",
+    "deterministic_audit": "Deterministic Audit \u2014 authoritative",
+    "ai_audit_commentary": "Optional AI Audit Commentary \u2014 advisory",
+    "attack_demo": "Attack Demo \u2014 Malicious BargainBin",
+    "top_bar": "Mandate & Wallet",
+    "left_column": "Request",
+    "centre_column": "Merchant Comparison & Basket",
+    "right_column": "Policy Verdict",
+    "payment_column": "Payment",
+    "final_metrics": "Final Metrics"
+  },
+  "badges": {
+    "real_mainnet_self_transfer": "\ud83d\udd34 REAL MAINNET SELF-TRANSFER",
+    "testnet_verify_mode": "\ud83e\uddea TESTNET / VERIFY MODE"
+  },
+  "top_bar_labels": {
+    "wallet": "Wallet",
+    "delegated_budget": "Delegated budget",
+    "max_per_merchant": "Maximum per merchant",
+    "available_budget": "Available delegated budget",
+    "agent_status": "Agent status",
+    "pause": "Pause agent",
+    "resume": "Resume agent"
+  },
+  "progress_labels": {
+    "searching": "Searching",
+    "comparing": "Comparing",
+    "selected": "Selected"
+  },
+  "centre_labels": {
+    "eligible": "eligible",
+    "over_cap": "over cap",
+    "unauthorized": "unauthorized",
+    "basket_heading": "Basket variant \u2014 two chargers and one HDMI cable"
+  },
+  "right_labels": {
+    "verdict_heading": "Policy Verdict",
+    "reasoning_heading": "Model reasoning (advisory only \u2014 not the verdict)"
+  },
+  "payment_labels": {
+    "spend_intent_id": "SpendIntent ID",
+    "amount": "Amount",
+    "expiry_countdown": "Expiry countdown",
+    "http_402_received": "HTTP 402 received",
+    "recipient_verified": "Recipient verified",
+    "eip3009_signed": "EIP-3009 signed",
+    "submitted": "Submitted",
+    "onchain_receipt_verified": "On-chain receipt verified",
+    "settlement_recorded": "Settlement recorded",
+    "consumed": "Consumed",
+    "snowtrace_link": "View on Snowtrace"
+  },
+  "final_metrics_labels": {
+    "wallet_heading": "Wallet",
+    "wallet_before": "XSGD before",
+    "wallet_after": "XSGD after",
+    "wallet_unchanged": "unchanged due to self-transfer",
+    "wallet_gas": "AVAX reduced by gas",
+    "policy_heading": "Policy",
+    "policy_delegated": "Delegated",
+    "policy_consumed": "Consumed",
+    "policy_available": "Available"
+  },
+  "attack_labels": {
+    "merchant_allowed_pass": "merchant_allowed PASS",
+    "product_requested_fail": "product_requested FAIL",
+    "category_allowed_fail": "category_allowed FAIL",
+    "per_intent_limit_fail": "per_intent_limit FAIL",
+    "spend_intent_not_created": "SpendIntent NOT CREATED",
+    "signature_not_created": "Signature NOT CREATED",
+    "transaction_not_submitted": "Transaction submitted: NO"
   },
   "buttons": {
     "create_mandate": "Create mandate & submit request",
@@ -40,7 +109,7 @@
     "approve": "Approve this purchase",
     "reject": "Reject this purchase",
     "pay": "Authorize & pay",
-    "run_audit": "Run Audit Agent",
+    "run_audit": "Run Audit Monitor",
     "run_attack_demo": "Run attack demo",
     "reset": "Reset demo"
   },
@@ -54,11 +123,17 @@
   },
   "never_show_note": "This dashboard never displays private keys, the OpenAI API key, card CVV/PAN, or complete card material.",
   "spend_intent_status_labels": {
-    "minted": "minted, not yet redeemed",
-    "committed": "committed \u2014 payment settled",
-    "released": "released \u2014 payment attempt failed, nothing spent",
+    "AUTHORIZED": "authorized \u2014 reserved, not yet executing",
+    "EXECUTING": "executing \u2014 signed/issued, settlement not yet confirmed",
+    "CONSUMED": "consumed \u2014 payment settled",
+    "EXPIRED": "expired \u2014 reservation lapsed, nothing spent",
+    "DENIED": "denied \u2014 refused before any signature, nothing spent",
+    "FAILED": "failed \u2014 payment attempt failed, nothing spent",
+    "CANCELLED": "cancelled \u2014 nothing spent",
+    "RECONCILIATION_REQUIRED": "reconciliation required \u2014 outcome unknown, reservation held",
     "rejected": "rejected by human \u2014 never minted",
     "blocked": "blocked by policy \u2014 never minted",
     "none": "not yet requested"
   }
 }
+

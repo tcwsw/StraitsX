@@ -1,14 +1,14 @@
 """OpenAI Agents SDK execution agent (AGENT_MODE=openai).
 
 This is an alternative to the deterministic `choose_basket()` in agent/run.py
-(AGENT_MODE=scripted, the default). It lets an LLM pick between already-gathered quotes,
+(AGENT_MODE=scripted, the default). It lets an LLM pick between already-gathered offers,
 one per requested line item, and explain its reasoning, without ever giving the model
 anything that can move money.
 
 Boundary this module enforces
 ------------------------------
 - Input to the model is a typed `procurement_request` (the user's goal, every requested
-  item with its exact quantity, and the mandate's delivery constraint), the typed `Quote`
+  item with its exact quantity, and the mandate's delivery constraint), the typed `Offer`
   catalogue (each tagged with a controller-assigned `quote_id` and the `requested_item_index`
   it can fulfil), the normalized `Mandate`, and the PM-owned agent behaviour config. Nothing
   else — no raw HTML, no free-form merchant text, no wallet material, no policy secret, no
@@ -47,7 +47,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import BaseModel, Field
 
 from config import loader as config_loader
-from pg.models import Mandate, PurchaseProposal, Quote, RejectedAlternative, RequestedItem, SelectedLineItem
+from pg.models import Mandate, Offer, PurchaseProposal, RejectedAlternative, RequestedItem, SelectedLineItem
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -89,10 +89,12 @@ Follow these rules exactly:
    Never select more than one quote for the same requested item, never skip one, and never
    select a quote_id that was not offered for that requested_item_index.
 3. You choose only `requested_item_index` and `quote_id` per selection — never a sku, price,
-   quantity, total, wallet, asset or network. Those are fixed by the developer-owned
-   catalogue and the original requested quantity, and cannot be changed by anything you
-   generate.
-4. Every selected quote must belong to the same merchant_id (one merchant per purchase).
+   quantity, total, merchant wallet, payment network, currency, or asset. Those are fixed by
+   the developer-owned catalogue and the original requested quantity, and cannot be changed
+   by anything you generate.
+4. Selected quotes may come from more than one merchant — a basket that needs items from
+   several merchants is fine. Same-merchant items are grouped into one checkout per
+   merchant downstream; you do not need to do anything for that yourself.
 5. Stay inside the mandate: merchant in allowed_merchants, category in allowed_categories,
    and no title containing a denied_keywords entry.
 6. If you cannot make a confident, unambiguous choice from the request and quotes given, set
@@ -103,8 +105,8 @@ Follow these rules exactly:
 """
 
 
-class QuoteForAgent(Quote):
-    """A `Quote` plus the controller-assigned id the model must use to refer to it, and the
+class OfferForAgent(Offer):
+    """An `Offer` plus the controller-assigned id the model must use to refer to it, and the
     requested_item_index it was gathered for."""
 
     quote_id: str
@@ -162,16 +164,16 @@ def _load_agent_behaviour() -> dict:
 
 
 def _assign_quote_ids(
-    requested_items: list[RequestedItem], quotes_by_item: dict[str, list[Quote]],
-) -> tuple[list[QuoteForAgent], dict[str, Quote], dict[str, int]]:
+    requested_items: list[RequestedItem], quotes_by_item: dict[str, list[Offer]],
+) -> tuple[list[OfferForAgent], dict[str, Offer], dict[str, int]]:
     """Flatten the per-item quote gathering into one tagged catalogue: every quote gets a
     controller-assigned `quote_id` and is stamped with the `requested_item_index` (the
     canonical position in `requested_items`) it was gathered for. `quote_item_index` is the
     trusted quote_id -> requested_item_index mapping the validator uses — never the model's
     own claim about which requested item a quote belongs to."""
-    catalogue: dict[str, Quote] = {}
+    catalogue: dict[str, Offer] = {}
     quote_item_index: dict[str, int] = {}
-    for_agent: list[QuoteForAgent] = []
+    for_agent: list[OfferForAgent] = []
     counter = 0
     for idx, item in enumerate(requested_items):
         for q in quotes_by_item.get(item.name, []):
@@ -179,7 +181,7 @@ def _assign_quote_ids(
             counter += 1
             catalogue[quote_id] = q
             quote_item_index[quote_id] = idx
-            for_agent.append(QuoteForAgent(quote_id=quote_id, requested_item_index=idx, **q.model_dump()))
+            for_agent.append(OfferForAgent(quote_id=quote_id, requested_item_index=idx, **q.model_dump()))
     return for_agent, catalogue, quote_item_index
 
 
@@ -209,11 +211,11 @@ def _build_agent():
 def propose_purchase(
     mandate: Mandate,
     requested_items: list[RequestedItem],
-    quotes_by_item: dict[str, list[Quote]],
+    quotes_by_item: dict[str, list[Offer]],
     goal: str,
-) -> tuple[AgentPurchaseProposal, dict[str, Quote], dict[str, int]]:
+) -> tuple[AgentPurchaseProposal, dict[str, Offer], dict[str, int]]:
     """Ask the model to choose one quote per requested item. Returns the raw proposal plus
-    the controller's own quote_id -> Quote catalogue and quote_id -> requested_item_index
+    the controller's own quote_id -> Offer catalogue and quote_id -> requested_item_index
     map, which the caller MUST use to validate before acting on it. Raises RuntimeError
     (from `_build_agent()`) before any model call if OPENAI_API_KEY is missing."""
     from agents import Runner
@@ -239,7 +241,9 @@ def propose_purchase(
     }
 
     # No `session=` here — every run is stateless, nothing is remembered between calls.
-    result = Runner.run_sync(agent, json.dumps(payload))
+    # `default=str` handles the Decimal-valued XSGD fields in quotes/mandate — this is
+    # LLM-input formatting only, never a policy or payment comparison.
+    result = Runner.run_sync(agent, json.dumps(payload, default=str))
     proposal = result.final_output
     if not isinstance(proposal, AgentPurchaseProposal):
         raise ProposalValidationError("model did not return an AgentPurchaseProposal")
@@ -248,16 +252,18 @@ def propose_purchase(
 
 def validate_and_build_proposal(
     proposal: AgentPurchaseProposal,
-    catalogue: dict[str, Quote],
+    catalogue: dict[str, Offer],
     quote_item_index: dict[str, int],
     requested_items: list[RequestedItem],
     goal: str,
 ) -> PurchaseProposal:
     """Require exactly one selected quote per requested item, confirm each selected quote
-    actually belongs to the requested item the model claimed, require a single merchant
-    across the whole basket, take quantity only from the original `RequestedItem` (never
-    from the model), and re-derive sku/merchant/unit_price from the controller's own quote
-    catalogue. Raises ProposalValidationError instead of ever forwarding a value the model
+    actually belongs to the requested item the model claimed, take quantity only from the
+    original `RequestedItem` (never from the model), and re-derive sku/merchant/unit_price
+    from the controller's own quote catalogue. A basket may span more than one merchant —
+    same-merchant items are grouped downstream by the policy engine
+    (`pg.policy_engine._group_by_merchant()` / `evaluate_basket()`), one SpendIntent leg per
+    merchant. Raises ProposalValidationError instead of ever forwarding a value the model
     merely claimed. Only a successful return here may be handed to the policy engine (via
     `pg.policy_engine.evaluate_basket()`)."""
     if proposal.detected_injection:
@@ -309,15 +315,9 @@ def validate_and_build_proposal(
             merchant_id=real_quote.merchant_id,
             sku=real_quote.sku,
             quote_id=selections[idx].quote_id,
-            unit_price=real_quote.price,
+            unit_price=real_quote.unit_price_xsgd,
             quantity=item.quantity,      # from the original RequestedItem, never the model
         ))
-
-    if len(merchant_ids) != 1:
-        raise ProposalValidationError(
-            f"selected items span {len(merchant_ids)} merchants ({sorted(merchant_ids)}); "
-            "the initial demo requires a single-merchant basket"
-        )
 
     rejected = [
         RejectedAlternative(quote_id=r.quote_id, reason=r.reason)
@@ -336,7 +336,7 @@ def validate_and_build_proposal(
 def run(
     mandate: Mandate,
     requested_items: list[RequestedItem],
-    quotes_by_item: dict[str, list[Quote]],
+    quotes_by_item: dict[str, list[Offer]],
     goal: str,
 ) -> tuple[AgentPurchaseProposal, PurchaseProposal]:
     """Full round trip: ask the model, then validate its proposal against the typed quote

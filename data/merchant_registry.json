@@ -1,0 +1,44 @@
+{
+  "merchants": {
+    "techstore": {
+      "display_name": "TechStore",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": "0x6674f556631f54fb5a58485104bea1922085b2e5",
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.94
+    },
+    "gadgethub": {
+      "display_name": "GadgetHub",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.88
+    },
+    "bargainbin": {
+      "display_name": "BargainBin",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.22
+    },
+    "cheapdealsstore": {
+      "display_name": "CheapDealsStore",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.85
+    }
+  }
+}

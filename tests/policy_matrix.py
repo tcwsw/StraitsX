@@ -22,10 +22,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("POLICY_SECRET", "test-only-policy-matrix-secret-do-not-use-in-prod")
 
 from pg import policy_engine as pe
-from pg.models import Decision, Mandate, Quote
+from pg.models import Decision, Mandate, Offer
+from tests._test_registry import build_test_registry
+
+# Swap in a test-only registry (synthetic addresses, never the shipped
+# data/merchant_registry.json, which deliberately leaves techstore's recipient
+# unresolved) so the SpendIntent/replay cases below have a real happy path to exercise.
+pe.REGISTRY = build_test_registry()
 
 C = {"ok": "\033[92m", "bad": "\033[91m", "dim": "\033[2m", "b": "\033[1m", "off": "\033[0m"}
-TRUSTED = ["techstore", "gadgethub", "quickelectronics"]
+TRUSTED = ["techstore", "gadgethub", "cheapdealsstore"]
 
 
 def mandate(**over) -> Mandate:
@@ -40,22 +46,26 @@ def mandate(**over) -> Mandate:
         expires_at=(datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(),
     )
     base.update(over)
+    base["per_intent_max"] = base.pop("per_txn_max")   # kwarg name kept for existing call sites
     return Mandate(**base)
 
 
 def quote(merchant_id="techstore", price=8.50, category="electronics",
-          title="USB-C 65W Charger", sku="TS-USBC-65", currency="XSGD") -> Quote:
-    return Quote(
+          title="USB-C 65W Charger", sku="TS-USBC-65", currency="XSGD") -> Offer:
+    reg = pe.REGISTRY.get(merchant_id)
+    return Offer(
+        offer_id=sku,
         merchant_id=merchant_id,
         merchant_name=merchant_id.title(),
-        sku=sku, title=title, category=category, price=price, currency=currency,
+        sku=sku, title=title, product_type="unknown", category=category,
+        unit_price_xsgd=price, currency=currency,
         delivery_days=0, in_stock=True,
-        reputation=pe.MERCHANT_REGISTRY.get(merchant_id, {}).get("reputation", 0.0),
+        reputation=reg.reputation if reg else 0.0,
         checkout_url=f"/{merchant_id}/checkout",
     )
 
 
-def decision(q: Quote, qty=1, reasoning="cheapest in-stock option") -> Decision:
+def decision(q: Offer, qty=1, reasoning="cheapest in-stock option") -> Decision:
     return Decision(
         decision_id="d-" + uuid.uuid4().hex[:8], goal="buy hackathon kit",
         chosen=q, rejected=[], reasoning=reasoning, quantity=qty,
@@ -70,7 +80,7 @@ MANDATE_CASES = [
      mandate(), decision(quote(price=8.50)), True, None),
 
     ("P2", "single transaction above per-txn cap",
-     mandate(), decision(quote(price=8.50), qty=2), False, "per_txn_limit"),
+     mandate(), decision(quote(price=8.50), qty=2), False, "per_intent_limit"),
 
     ("P3", "above the human-approval threshold but under the cap",
      mandate(), decision(quote(price=13.50, sku="TS-HUB-7P", title="USB-C 7-Port Hub")),
@@ -97,9 +107,9 @@ MANDATE_CASES = [
     ("P8", "wrong currency",
      mandate(), decision(quote(price=8.50, currency="USDC")), False, "currency"),
 
-    ("P9", "merchant on the allowlist but untrusted in our registry",
-     mandate(allowed_merchants=TRUSTED + ["bargainbin"]),
-     decision(quote(merchant_id="bargainbin", price=3.00, sku="BB-USBC-65")),
+    ("P9", "merchant on the allowlist but not present in the registry at all",
+     mandate(allowed_merchants=TRUSTED + ["shadystore"]),
+     decision(quote(merchant_id="shadystore", price=3.00, sku="SS-USBC-65")),
      False, "merchant_allowed"),
 
     ("P10", "injected instruction in agent reasoning does not change the verdict",
@@ -112,18 +122,11 @@ MANDATE_CASES = [
 
 # ---------------------------------------------------------------- SpendIntent cases
 
-def _redeem(token: str, merchant_id: str, amount: float, **overrides) -> tuple[bool, str]:
+def _redeem(token: str, merchant_id: str, amount: float) -> tuple[bool, str]:
     """Test helper mirroring the old one-shot redeem_intent(): reserve the intent bound
-    to the correct wallet/asset/network/chain (unless a case explicitly overrides one of
-    them to prove it is checked), then commit immediately on success. Returns (ok, detail)
+    to the correct merchant/amount, then commit immediately on success. Returns (ok, detail)
     exactly like the old API did, so the cases below read the same as before."""
-    reg = pe.MERCHANT_REGISTRY.get(merchant_id, {})
-    pay_to = overrides.get("pay_to", reg.get("wallet", "0x0"))
-    asset = overrides.get("asset", pe.XSGD_ASSET)
-    network = overrides.get("network", pe.expected_network())
-    chain_id = overrides.get("chain_id", int(pe.expected_network().split(":")[1]))
-    ok, ref = pe.reserve_intent(token, merchant_id, amount, pay_to=pay_to, asset=asset,
-                                network=network, chain_id=chain_id)
+    ok, ref = pe.reserve_intent(token, merchant_id, amount)
     if ok:
         pe.commit_intent(ref)
     return ok, ref

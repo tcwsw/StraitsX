@@ -1,0 +1,45 @@
+{
+  "_note": "Local, gitignored completion of the shipped data/merchant_registry.json. FINTECH fills in real, whitelisted settlement wallets here rather than in the committed repo file, which must always ship with payment_recipient left null/*_TODO_REQUIRED. Point MERCHANT_REGISTRY_PATH at this file (see .env.policy.example) to use it. Required for `./run.sh live-self-transfer`, where techstore's payment_recipient must equal the address derived from AGENT_PRIVATE_KEY.",
+  "merchants": {
+    "techstore": {
+      "display_name": "TechStore",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": "0xREPLACE_WITH_THE_ADDRESS_DERIVED_FROM_AGENT_PRIVATE_KEY",
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.94
+    },
+    "gadgethub": {
+      "display_name": "GadgetHub",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.88
+    },
+    "bargainbin": {
+      "display_name": "BargainBin",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.22
+    },
+    "cheapdealsstore": {
+      "display_name": "CheapDealsStore",
+      "allowed": true,
+      "status": "ACTIVE",
+      "payment_recipient": null,
+      "network": "avalanche",
+      "chain_id": 43114,
+      "currency": "XSGD",
+      "reputation": 0.85
+    }
+  }
+}

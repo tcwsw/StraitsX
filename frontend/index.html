@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProcureGuard — AI Procurement Agent</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="topbar-left">
+    <div class="shield">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" fill="#0f172a"/>
+        <path d="M9.5 12.2l1.8 1.8 3.4-3.6" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <div class="brand-title">ProcureGuard</div>
+      <div class="brand-sub">AI Procurement Agent</div>
+    </div>
+  </div>
+
+  <div class="topbar-mandate">
+    <span class="mandate-label">Mandate <strong id="mandateId">M-001</strong></span>
+    <span class="pill pill-active" id="agentStatusPill">ACTIVE</span>
+  </div>
+
+  <div class="topbar-stats">
+    <div class="stat"><span class="stat-label">Budget</span><span class="stat-value" id="statBudget">30.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Per-Merchant Limit</span><span class="stat-value" id="statLimit">20.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Spent</span><span class="stat-value" id="statSpent">0.00 XSGD</span></div>
+    <div class="stat"><span class="stat-label">Remaining</span><span class="stat-value stat-remaining" id="statRemaining">30.00 XSGD</span></div>
+  </div>
+
+  <button class="pause-btn" id="pauseBtn">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+    <span id="pauseBtnLabel">PAUSE AGENT</span>
+  </button>
+</header>
+
+<div class="mode-banner" id="modeBanner"></div>
+
+<main class="grid">
+
+  <!-- 1. Request & Agent -->
+  <section class="card" id="card-request">
+    <h2 class="card-title">1. Your Request &amp; Agent</h2>
+    <form class="request-form" id="requestForm">
+      <input type="text" id="requestInput" class="request-input" autocomplete="off"
+             placeholder="e.g. 2 x usb-c charger" value="1 x usb-c charger" />
+      <button type="submit" class="request-submit" id="requestSubmit">Run ▶</button>
+    </form>
+    <div class="request-options">
+      <label>Budget <input type="number" id="budgetInput" value="30" min="0.01" step="0.01" /> XSGD</label>
+      <label>Per-merchant cap <input type="number" id="capInput" value="20" min="0.01" step="0.01" /> XSGD</label>
+    </div>
+    <div class="request-error" id="requestError" style="display:none"></div>
+    <div class="chat-bubble user-bubble" id="requestBubble" style="display:none">
+      <div class="chat-name">You</div>
+      <div class="chat-text" id="requestText">—</div>
+      <div class="chat-time" id="requestTime">—</div>
+    </div>
+    <div class="agent-block">
+      <div class="chat-name agent-name">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2"><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M9 8V5a3 3 0 016 0v3" /><circle cx="9" cy="13" r="1" fill="#2563eb" stroke="none"/><circle cx="15" cy="13" r="1" fill="#2563eb" stroke="none"/></svg>
+        ProcureGuard Agent
+      </div>
+      <ul class="agent-log" id="agentLog">
+        <li class="empty-state">Type a request above and press Run.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2. Offers -->
+  <section class="card" id="card-offers">
+    <h2 class="card-title">2. Offers from Authorized Merchants</h2>
+    <div class="offer-list" id="offerList">
+      <div class="empty-state">Waiting for merchant quotes…</div>
+    </div>
+  </section>
+
+  <!-- 3. Policy Check -->
+  <section class="card" id="card-policy">
+    <h2 class="card-title">3. ProcureGuard Policy Check <span class="card-subtitle">(Post-Hook)</span></h2>
+    <ul class="check-list" id="policyChecks">
+      <li class="empty-state">Awaiting a policy verdict…</li>
+    </ul>
+  </section>
+
+  <!-- 4. Payment -->
+  <section class="card" id="card-payment">
+    <h2 class="card-title">4. Payment <span class="card-subtitle">(x402 / XSGD on Avalanche)</span></h2>
+    <div class="stepper" id="paymentStepper">
+      <div class="step" data-step="challenge"><div class="step-dot">1</div><div class="step-label">402 Received</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="verified"><div class="step-dot">2</div><div class="step-label">Verified</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="submitted"><div class="step-dot">3</div><div class="step-label">Payment Submitted</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="settled"><div class="step-dot">4</div><div class="step-label">Settled on Avalanche</div><div class="step-time"></div></div>
+      <div class="step-line"></div>
+      <div class="step" data-step="consumed"><div class="step-dot">5</div><div class="step-label">SpendIntent Consumed</div><div class="step-time"></div></div>
+    </div>
+    <div class="payment-meta" id="paymentMeta">
+      <div class="meta-cell"><span class="meta-label">SpendIntent</span><span class="meta-value" id="metaIntent">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Merchant</span><span class="meta-value" id="metaMerchant">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Amount</span><span class="meta-value" id="metaAmount">—</span></div>
+      <div class="meta-cell"><span class="meta-label">Expires in</span><span class="meta-value" id="metaExpiry">—</span></div>
+    </div>
+    <a class="snowtrace-link" id="snowtraceLink" href="#" target="_blank" rel="noopener" style="display:none">View on Snowtrace →</a>
+  </section>
+
+  <!-- 5. Audit Trail -->
+  <section class="card" id="card-audit">
+    <h2 class="card-title">5. Audit Trail</h2>
+    <ul class="audit-list" id="auditList">
+      <li class="empty-state">No events yet.</li>
+    </ul>
+  </section>
+
+  <!-- 6. Attack Mode -->
+  <section class="card card-attack" id="card-attack">
+    <h2 class="card-title">6. Attack Mode <span class="card-subtitle">(Live)</span></h2>
+    <div class="attack-banner" id="attackBanner" style="display:none">
+      ⚠ Prompt injection detected in merchant content. Post-hook will enforce policy.
+    </div>
+    <ul class="check-list check-list-attack" id="attackChecks">
+      <li class="empty-state">Attack scenario not yet run.</li>
+    </ul>
+    <div class="denied-banner" id="deniedBanner" style="display:none">
+      <div class="denied-title">✕ DENIED</div>
+      <div class="denied-sub" id="deniedSub">SpendIntent NOT CREATED · Payment signature NOT CREATED</div>
+      <div class="denied-funds" id="deniedFunds">Funds moved: NO</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer-note">
+  Backend: <span id="policyUrlLabel"></span> (policy) · <span id="merchantsUrlLabel"></span> (merchants).
+  Never displays private keys, the OpenAI API key, CVV, PAN, or complete card material.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

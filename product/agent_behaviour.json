@@ -1,7 +1,7 @@
 {
   "_owner": "PM",
   "_note": "Non-financial behaviour knobs for the scripted execution agent (agent/run.py). Financial limits (budgets, per-transaction caps, thresholds) live in fintech/policy_config.json and must never be duplicated or overridden here.",
-  "default_merchants": ["techstore", "gadgethub", "quickelectronics"],
+  "default_merchants": ["techstore", "gadgethub", "cheapdealsstore"],
   "attack_merchant_id": "bargainbin",
   "selection_strategy": "cheapest_in_stock_meeting_delivery_constraint",
   "reasoning_template": "{merchant} at {price:.2f} XSGD, {delivery}, reputation {reputation:.2f}. Cheapest in-stock option meeting the delivery constraint.",
