@@ -1,0 +1,142 @@
+<mxfile host="app.diagrams.net" agent="ProcureGuard" version="24.7.0">
+  <diagram name="ProcureGuard Architecture" id="procureguard-architecture">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Region: outside the system -->
+        <mxCell id="grp_outside" value="OUTSIDE THE SYSTEM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#2BA84A;verticalAlign=top;fontColor=#2BA84A;fontStyle=1;align=center;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1080" height="220" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_pm" value="PROCUREMENT MANAGER&#10;sets the guardrails once, organisation-wide&#10;(trusted authority)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="90" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_user" value="END USER&#10;states what they need, per purchase&#10;(trusted, but bounded by policy)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="90" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_merchants" value="MERCHANT SERVERS&#10;catalogue responses, prices, 402 challenges&#10;(untrusted — claims, never facts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#E05A47;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="90" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note_fetch" value="we fetch it; they are not asked to cooperate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D9D9D9;strokeColor=#666666;fontColor=#000000;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="820" y="220" width="230" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- Region: procureguard backend -->
+        <mxCell id="grp_backend" value="PROCUREGUARD BACKEND &#183; everything below runs on our infrastructure" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#2BA84A;verticalAlign=top;fontColor=#2BA84A;fontStyle=1;align=center;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1080" height="1470" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_clarify" value="CLARIFICATION (pg/clarify.py)&#10;backend decides IF a field is still missing&#10;the model decides HOW to ask for it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="330" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_prehook" value="PRE-HOOK (pg/prehook.py)&#10;our code, on our side of the wire&#10;projects merchant data onto a typed schema&#10;and drops every free-text field" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="330" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note_discard" value="discarded before the model sees it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D9D9D9;strokeColor=#666666;fontColor=#000000;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="860" y="490" width="210" height="34" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_removed" value="removed_offers&#10;+ security_flags" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08251B;strokeColor=#2BA84A;fontColor=#AAAAAA;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="990" y="540" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_policy" value="POLICY (fintech/policy_config.json + pg/policy_engine.py)&#10;organisation guardrails, standing&#10;maximum delegated spend &#183; per-merchant cap&#10;approved merchants &#183; allowed/blocked categories&#10;who may delegate, and for how long" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="470" width="260" height="190" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_sanitized" value="SANITIZED CANDIDATE SET&#10;typed offers only (pg/models.py: Offer)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="540" width="280" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_mandate" value="MANDATE (pg/models.py: Mandate)&#10;this purchase, frozen and authorized&#10;items &#183; quantities &#183; this purchase's ceiling&#10;can narrow the policy, never widen it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="720" width="260" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_ai_agent" value="AI AGENT (agent/execution_agent.py / agent/run.py)&#10;recommends an offer_id&#10;runs here, but its output is&#10;treated as untrusted all the same" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#E05A47;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="680" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_boundary1" value="BOUNDARY 1 &#183; POST-HOOK / POLICY ENGINE (pg/policy_server.py, pg/policy_engine.py)&#10;own process &#183; holds the keys &#183; no LLM&#10;re-fetches merchant data and recalculates the amount itself&#10;Does this purchase satisfy the mandate, and the policy above it?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1AAE5C;strokeColor=#0F3D2E;fontColor=#04140D;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="370" y="920" width="280" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_spendintent" value="SPENDINTENT (pg/models.py: SpendIntent) &#183; AUTHORIZED&#10;one merchant &#183; one amount &#183; one item set&#10;three minutes &#183; single use" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="1130" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_boundary2" value="BOUNDARY 2 &#183; TRUSTED MERCHANT REGISTRY (pg/merchant_registry.py)&#10;backend only, no write endpoint&#10;merchant_id resolves to the one payable address;&#10;the 402's payTo must match it, or deny&#10;Does this payment request match what was approved?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1AAE5C;strokeColor=#0F3D2E;fontColor=#04140D;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="370" y="1290" width="280" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_x402" value="x402 PAYMENT ADAPTER (pg/x402_client.py, merchants/facilitator.py)&#10;402 challenge &#8594; verify &#8594; sign&#10;EIP-3009 &#183; XSGD &#183; Avalanche mainnet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="1510" width="280" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_audit" value="AUDIT LEDGER (pg/ledger.py, audit/audit_agent.py)&#10;hash-chained, anchored by the on-chain transaction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F3D2E;strokeColor=#2BA84A;fontColor=#FFFFFF;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="1660" width="280" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_pm" target="n_policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_user" target="n_clarify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="re-checked, never assumed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#2BA84A;fontColor=#2BA84A;fontSize=10;" edge="1" parent="1" source="n_user" target="n_boundary1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E05A47;" edge="1" parent="1" source="n_merchants" target="n_prehook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_prehook" target="n_sanitized">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#999999;" edge="1" parent="1" source="n_prehook" target="n_removed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_sanitized" target="n_ai_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="hard ceiling" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;fontColor=#2BA84A;fontSize=10;" edge="1" parent="1" source="n_policy" target="n_mandate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_clarify" target="n_boundary1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_mandate" target="n_boundary1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E05A47;" edge="1" parent="1" source="n_ai_agent" target="n_boundary1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1AAE5C;" edge="1" parent="1" source="n_boundary1" target="n_spendintent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1AAE5C;" edge="1" parent="1" source="n_spendintent" target="n_boundary2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1AAE5C;" edge="1" parent="1" source="n_boundary2" target="n_x402">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_x402" target="n_audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2BA84A;" edge="1" parent="1" source="n_merchants" target="n_boundary2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1AAE5C;" edge="1" parent="1" source="n_x402" target="n_merchants">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
